@@ -16,7 +16,7 @@ changes in `corebari`, and only the Android client lives in this directory.
 | Database | `corebari-apps/packages/db/src/schema/agentkhata` | Postgres schema `agentkhata`, row-level security per tenant. |
 | Platform changes | `corebari` | Catalog entry, SSO client, phone-first signup. |
 | Plan and decisions | [docs/EXECUTION_PLAN.md](docs/EXECUTION_PLAN.md) | D1 to D24, the reasoning behind each. |
-| Screenshots | [docs/screenshots/](docs/screenshots/) | Portal at desktop and phone width. |
+| Screenshots | [docs/screenshots/](docs/screenshots/) | All 16 portal screens, at 1440px and 375px. |
 | Testing it | [docs/TESTING.md](docs/TESTING.md) | How to prove the whole thing works with no agent account. |
 
 ## How it works
