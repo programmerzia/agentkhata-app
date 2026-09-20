@@ -1,0 +1,11 @@
+app/build/
+app/.dart_tool/
+app/.gradle/
+app/android/.gradle/
+app/android/local.properties
+*.iml
+.idea/
+
+# Flutter tool output
+app/.flutter-plugins-dependencies
+app/ios/Flutter/ephemeral/

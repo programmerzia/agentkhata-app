@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The widget's own palette.
+
+  It repeats the CoreBari AgentKhata accent (#3346A6) rather than reading the
+  Flutter theme, because a RemoteViews tree is inflated by the launcher process
+  and never sees anything the Dart side knows.
+-->
+<resources>
+    <color name="widget_accent">#3346A6</color>
+    <color name="widget_surface">#FFFFFF</color>
+    <color name="widget_ink">#101322</color>
+    <color name="widget_ink_dim">#5A6070</color>
+    <color name="widget_warn">#B4341F</color>
+</resources>

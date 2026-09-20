@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Shown in the launcher's widget picker and before the first update. -->
+    <string name="widget_title">এজেন্ট খাতা</string>
+    <string name="widget_description">ফ্লোট, ক্যাশ আর আজকের হিসাব এক নজরে</string>
+</resources>

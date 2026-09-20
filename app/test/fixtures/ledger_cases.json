@@ -1,0 +1,234 @@
+{
+  "note": "The posting rules, pinned. Loaded by src/server/ledger.test.ts here and by test/core/fixtures_test.dart in the Android app, so the two implementations cannot drift. Change a rule by changing THIS file first; both suites then fail until both implementations agree. Money is poisha.",
+  "wallets": [
+    { "id": "cash", "kind": "cash", "openingPoisha": "1000000" },
+    { "id": "bkash", "kind": "bkash", "openingPoisha": "5000000" },
+    { "id": "nagad", "kind": "nagad", "openingPoisha": "2000000" },
+    { "id": "bank", "kind": "bank", "openingPoisha": "0" }
+  ],
+  "cases": [
+    {
+      "name": "cash in: customer hands over paper money, wallet pays out e-money",
+      "why": "The direction everything else depends on. Getting this pair backwards inverts every balance in the product.",
+      "entries": [
+        {
+          "id": "e1",
+          "walletId": "bkash",
+          "type": "cash_in",
+          "amountPoisha": "100000",
+          "commissionPoisha": "410",
+          "feePoisha": "0"
+        }
+      ],
+      "expectedBalances": { "cash": "1100000", "bkash": "4900410", "nagad": "2000000", "bank": "0" },
+      "expectedCommissionPoisha": "410",
+      "expectedNetProfitPoisha": "410"
+    },
+    {
+      "name": "cash out: the mirror",
+      "entries": [
+        {
+          "id": "e1",
+          "walletId": "bkash",
+          "type": "cash_out",
+          "amountPoisha": "50000",
+          "commissionPoisha": "205",
+          "feePoisha": "0"
+        }
+      ],
+      "expectedBalances": { "cash": "950000", "bkash": "5050205", "nagad": "2000000", "bank": "0" },
+      "expectedCommissionPoisha": "205",
+      "expectedNetProfitPoisha": "205"
+    },
+    {
+      "name": "fee reduces the wallet and is a cost",
+      "why": "A fee folded into the amount would make the drawer reconcile short by exactly the fee, every day.",
+      "entries": [
+        {
+          "id": "e1",
+          "walletId": "bkash",
+          "type": "cash_out",
+          "amountPoisha": "50000",
+          "commissionPoisha": "205",
+          "feePoisha": "100"
+        }
+      ],
+      "expectedBalances": { "cash": "950000", "bkash": "5050105", "nagad": "2000000", "bank": "0" },
+      "expectedCommissionPoisha": "205",
+      "expectedNetProfitPoisha": "105"
+    },
+    {
+      "name": "b2b in: the distributor gives e-money and is paid in cash",
+      "entries": [
+        {
+          "id": "e1",
+          "walletId": "bkash",
+          "type": "b2b_in",
+          "amountPoisha": "2000000",
+          "commissionPoisha": "0",
+          "feePoisha": "0"
+        }
+      ],
+      "expectedBalances": { "cash": "-1000000", "bkash": "7000000", "nagad": "2000000", "bank": "0" },
+      "expectedCommissionPoisha": "0",
+      "expectedNetProfitPoisha": "0"
+    },
+    {
+      "name": "b2b in paid from the bank rather than the drawer",
+      "why": "counterWalletId wins over the default cash leg. A lift settled by bank transfer is ordinary.",
+      "entries": [
+        {
+          "id": "e1",
+          "walletId": "bkash",
+          "type": "b2b_in",
+          "amountPoisha": "2000000",
+          "commissionPoisha": "0",
+          "feePoisha": "0",
+          "counterWalletId": "bank"
+        }
+      ],
+      "expectedBalances": { "cash": "1000000", "bkash": "7000000", "nagad": "2000000", "bank": "-2000000" },
+      "expectedCommissionPoisha": "0",
+      "expectedNetProfitPoisha": "0"
+    },
+    {
+      "name": "transfer between two of the agent's own accounts",
+      "entries": [
+        {
+          "id": "e1",
+          "walletId": "cash",
+          "type": "cash_move",
+          "amountPoisha": "300000",
+          "commissionPoisha": "0",
+          "feePoisha": "0",
+          "counterWalletId": "bank"
+        }
+      ],
+      "expectedBalances": { "cash": "700000", "bkash": "5000000", "nagad": "2000000", "bank": "300000" },
+      "expectedCommissionPoisha": "0",
+      "expectedNetProfitPoisha": "0"
+    },
+    {
+      "name": "expense and drawing both leave the drawer, but only one is a cost",
+      "why": "Money the owner takes out is not a cost of running the shop. Treating it as one is the commonest way a small ledger tells its owner they are losing money while their cash grows.",
+      "entries": [
+        {
+          "id": "e1",
+          "walletId": "cash",
+          "type": "expense",
+          "amountPoisha": "20000",
+          "commissionPoisha": "0",
+          "feePoisha": "0"
+        },
+        {
+          "id": "e2",
+          "walletId": "cash",
+          "type": "drawing",
+          "amountPoisha": "100000",
+          "commissionPoisha": "0",
+          "feePoisha": "0"
+        }
+      ],
+      "expectedBalances": { "cash": "880000", "bkash": "5000000", "nagad": "2000000", "bank": "0" },
+      "expectedCommissionPoisha": "0",
+      "expectedNetProfitPoisha": "-20000"
+    },
+    {
+      "name": "baki given and repaid, with no cash leg of its own",
+      "why": "Credit moves the drawer and the customer's receivable, not a second wallet.",
+      "entries": [
+        {
+          "id": "e1",
+          "walletId": "cash",
+          "type": "baki_given",
+          "amountPoisha": "50000",
+          "commissionPoisha": "0",
+          "feePoisha": "0",
+          "partyId": "rahim"
+        },
+        {
+          "id": "e2",
+          "walletId": "cash",
+          "type": "baki_received",
+          "amountPoisha": "20000",
+          "commissionPoisha": "0",
+          "feePoisha": "0",
+          "partyId": "rahim"
+        }
+      ],
+      "expectedBalances": { "cash": "970000", "bkash": "5000000", "nagad": "2000000", "bank": "0" },
+      "expectedCommissionPoisha": "0",
+      "expectedNetProfitPoisha": "0",
+      "expectedReceivables": { "rahim": "30000" }
+    },
+    {
+      "name": "a day close adjustment carries a signed amount",
+      "why": "The only type whose amount may be negative. A drawer 500 short posts -50000 poisha.",
+      "entries": [
+        {
+          "id": "e1",
+          "walletId": "cash",
+          "type": "adjustment",
+          "amountPoisha": "-50000",
+          "commissionPoisha": "0",
+          "feePoisha": "0"
+        }
+      ],
+      "expectedBalances": { "cash": "950000", "bkash": "5000000", "nagad": "2000000", "bank": "0" },
+      "expectedCommissionPoisha": "0",
+      "expectedNetProfitPoisha": "0"
+    },
+    {
+      "name": "a busy hour across two operators",
+      "entries": [
+        { "id": "e1", "walletId": "bkash", "type": "cash_in", "amountPoisha": "200000", "commissionPoisha": "820", "feePoisha": "0" },
+        { "id": "e2", "walletId": "bkash", "type": "cash_out", "amountPoisha": "100000", "commissionPoisha": "410", "feePoisha": "0" },
+        { "id": "e3", "walletId": "nagad", "type": "cash_in", "amountPoisha": "500000", "commissionPoisha": "2050", "feePoisha": "0" },
+        { "id": "e4", "walletId": "nagad", "type": "cash_out", "amountPoisha": "300000", "commissionPoisha": "1230", "feePoisha": "0" },
+        { "id": "e5", "walletId": "cash", "type": "expense", "amountPoisha": "15000", "commissionPoisha": "0", "feePoisha": "0" }
+      ],
+      "expectedBalances": { "cash": "1285000", "bkash": "4901230", "nagad": "1803280", "bank": "0" },
+      "expectedCommissionPoisha": "4510",
+      "expectedNetProfitPoisha": "-10490"
+    }
+  ],
+  "commissionCases": [
+    {
+      "name": "4.10 per thousand on 1,000 taka",
+      "mode": "per_thousand",
+      "ratePpm": 4100,
+      "amountPoisha": "100000",
+      "expectedPoisha": "410"
+    },
+    {
+      "name": "4.17 per thousand on 500 taka rounds to 2.09",
+      "why": "Half away from zero, at one place, in integer arithmetic. 500 x 4170 / 1,000,000 = 208.5.",
+      "mode": "per_thousand",
+      "ratePpm": 4170,
+      "amountPoisha": "50000",
+      "expectedPoisha": "209"
+    },
+    {
+      "name": "2.75 percent on 100 taka",
+      "mode": "percent",
+      "ratePpm": 27500,
+      "amountPoisha": "10000",
+      "expectedPoisha": "275"
+    },
+    {
+      "name": "a large amount does not drift",
+      "why": "The reason the rate is an integer ratio rather than a float: 0.0041 is not representable in binary, and a hundred thousand of these accumulate.",
+      "mode": "per_thousand",
+      "ratePpm": 4100,
+      "amountPoisha": "999999900",
+      "expectedPoisha": "4100000"
+    },
+    {
+      "name": "zero amount earns nothing",
+      "mode": "per_thousand",
+      "ratePpm": 4100,
+      "amountPoisha": "0",
+      "expectedPoisha": "0"
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Sized for the common 4x2 launcher cell.
+
+  `updatePeriodMillis` is 0 on purpose: the launcher's own period cannot be
+  faster than 30 minutes and would wake the app to redraw numbers that have not
+  changed. The app pushes an update whenever the ledger changes instead, which
+  is both fresher and cheaper.
+-->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="250dp"
+    android:minHeight="110dp"
+    android:targetCellWidth="4"
+    android:targetCellHeight="2"
+    android:description="@string/widget_description"
+    android:initialLayout="@layout/agentkhata_widget"
+    android:resizeMode="horizontal|vertical"
+    android:widgetCategory="home_screen"
+    android:updatePeriodMillis="0"/>
