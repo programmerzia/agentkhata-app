@@ -46,6 +46,16 @@ class _MessageSimulatorScreenState extends ConsumerState<MessageSimulatorScreen>
   final _log = <_Outcome>[];
   bool _busy = false;
 
+  /// The last message that actually reached the books, exactly as it was sent.
+  ///
+  /// Kept whole — text, sender, package and source — because resending with a
+  /// different sender is a different message. An earlier version resent the
+  /// last log line using whatever was in the composer's sender field, which
+  /// turned a quarantined message from a personal number into a legitimate one
+  /// from bKash and posted it. The duplicate test then proved nothing and the
+  /// books gained an entry the tester never asked for.
+  _Sent? _lastPosted;
+
   @override
   void dispose() {
     _body.dispose();
@@ -66,26 +76,46 @@ class _MessageSimulatorScreenState extends ConsumerState<MessageSimulatorScreen>
     bool freshIds = true,
     core.TxSource source = core.TxSource.autoNotification,
   }) async {
-    final text = freshIds ? _withFreshIds(body) : body;
+    final sent = _Sent(
+      body: freshIds ? _withFreshIds(body) : body,
+      sender: sender,
+      packageName: packageName,
+      source: source,
+    );
     setState(() => _busy = true);
     try {
       final result = await ref.read(ingestionProvider).ingest(
-            body: text,
-            sender: sender,
-            packageName: packageName,
-            source: source,
+            body: sent.body,
+            sender: sent.sender,
+            packageName: sent.packageName,
+            source: sent.source,
           );
       if (!mounted) return;
-      setState(() => _log.insert(0, _Outcome(text, result)));
+      setState(() {
+        _log.insert(0, _Outcome(sent.body, result));
+        if (result.status == core.ParseStatus.parsed) _lastPosted = sent;
+      });
     } finally {
       if (mounted) setState(() => _busy = false);
     }
   }
 
+  /// The same message a second time, which is what a phone with both SMS and
+  /// notification access sees for one transaction.
+  ///
+  /// Only a message that posted is worth resending: resending one that was
+  /// ignored or quarantined re-runs that verdict and says nothing about
+  /// deduplication, which is the thing under test.
   Future<void> _sendAgain() async {
-    final last = _log.isEmpty ? null : _log.first;
+    final last = _lastPosted;
     if (last == null) return;
-    await _send(last.body, _sender.text, freshIds: false);
+    await _send(
+      last.body,
+      last.sender,
+      packageName: last.packageName,
+      source: last.source,
+      freshIds: false,
+    );
   }
 
   /// Twelve messages in the shape of a real evening: a rush of cash-ins and
@@ -93,10 +123,15 @@ class _MessageSimulatorScreenState extends ConsumerState<MessageSimulatorScreen>
   /// cannot read and one fake.
   Future<void> _replayBusyHour() async {
     for (final scenario in _scenarios.where((s) => s.inReplay)) {
-      await _send(scenario.body, scenario.sender, packageName: scenario.packageName);
+      await _send(
+        scenario.body,
+        scenario.sender,
+        packageName: scenario.packageName,
+        source: scenario.source,
+      );
     }
-    // The same message twice is how a phone with both SMS and notification
-    // access sees one transaction. It must be stored once.
+    // Ends on a repeat of the last message that posted, which must be caught
+    // as a duplicate rather than stored twice.
     await _sendAgain();
   }
 
@@ -135,7 +170,7 @@ class _MessageSimulatorScreenState extends ConsumerState<MessageSimulatorScreen>
           ),
           const SizedBox(height: 8),
           OutlinedButton.icon(
-            onPressed: _busy || _log.isEmpty ? null : _sendAgain,
+            onPressed: _busy || _lastPosted == null ? null : _sendAgain,
             icon: const Icon(Icons.copy_all_outlined),
             label: const Text('Send the last one again (duplicate test)'),
           ),
@@ -235,6 +270,21 @@ String _withFreshIds(String body) {
       .replaceAll('{date}', '${two(now.day)}/${two(now.month)}/${now.year}')
       .replaceAll('{dashdate}', '${two(now.day)}-${two(now.month)}-${now.year}')
       .replaceAll('{time}', '${two(now.hour)}:${two(now.minute)}');
+}
+
+/// One message exactly as it went in, so it can go in again unchanged.
+class _Sent {
+  const _Sent({
+    required this.body,
+    required this.sender,
+    required this.packageName,
+    required this.source,
+  });
+
+  final String body;
+  final String sender;
+  final String? packageName;
+  final core.TxSource source;
 }
 
 class _Outcome {
@@ -353,7 +403,7 @@ const _scenarios = <_Scenario>[
   _Scenario(
     group: 'Normal traffic',
     label: 'B2B lifting received, Tk 50,000',
-    expectation: 'Posts as B2B in; the float dashboard should jump',
+    expectation: 'Float jumps and the drawer drops: lifting is paid for in cash',
     sender: '16247',
     inReplay: true,
     body:

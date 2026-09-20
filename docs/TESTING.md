@@ -128,6 +128,32 @@ adb install -r build/app/outputs/flutter-apk/app-debug.apk
 For the emulator use `http://10.0.2.2:3127`, which is how the emulator sees its
 host.
 
+### Running the emulator
+
+An AVD called `ak_test` is already created on this machine (Android 15,
+x86_64, KVM accelerated). Headless, so it costs nothing to leave running:
+
+```bash
+export ANDROID_HOME=$HOME/sdk/android
+$ANDROID_HOME/emulator/emulator -avd ak_test -no-window -no-audio -no-boot-anim &
+adb wait-for-device
+adb install -r build/app/outputs/flutter-apk/app-debug.apk
+adb shell am start -n no.osilion.agentkhata/.MainActivity
+```
+
+Useful while testing:
+
+```bash
+adb exec-out screencap -p > shot.png            # see what it looks like
+adb logcat -d | grep -E "E/flutter|FATAL"       # did anything throw
+adb shell run-as no.osilion.agentkhata \
+  cat /data/data/no.osilion.agentkhata/app_flutter/agentkhata.sqlite > app.sqlite
+```
+
+That last one pulls the app's own database, which settles arguments the screen
+cannot: whether a message posted, what status it landed in, and what the
+commission came out as.
+
 ### The message simulator
 
 Debug builds carry a bench for the capture pipeline: **Settings → Message

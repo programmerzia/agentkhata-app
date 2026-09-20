@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The adaptive icon. Android masks the foreground itself — circle on one
+  launcher, squircle on another — so the glyph is drawn inside the safe zone
+  and the background is the flat AgentKhata indigo rather than art that would
+  be cropped differently on every phone.
+-->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/ic_launcher_background"/>
+    <foreground android:drawable="@mipmap/ic_launcher_foreground"/>
+    <monochrome android:drawable="@mipmap/ic_launcher_foreground"/>
+</adaptive-icon>

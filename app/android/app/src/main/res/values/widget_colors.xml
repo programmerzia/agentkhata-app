@@ -8,6 +8,10 @@
 -->
 <resources>
     <color name="widget_accent">#3346A6</color>
+    <!-- The launcher icon background. Same indigo, named separately because an
+         adaptive icon must not follow the night palette: the launcher draws it
+         on its own wallpaper, not on the app's surface. -->
+    <color name="ic_launcher_background">#3346A6</color>
     <color name="widget_surface">#FFFFFF</color>
     <color name="widget_ink">#101322</color>
     <color name="widget_ink_dim">#5A6070</color>
