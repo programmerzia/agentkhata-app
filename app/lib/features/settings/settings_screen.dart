@@ -4,7 +4,6 @@ import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../app/providers.dart';
@@ -12,10 +11,11 @@ import '../../app/theme.dart';
 import '../../core/core.dart';
 import '../../data/database.dart' as db;
 import '../../l10n/strings.dart';
-import '../../platform/message_channel.dart';
 import 'sync_tile.dart';
 import '../lock/app_lock.dart';
 import 'topup_tile.dart';
+import 'captures_editor.dart';
+import '../setup/capture_checklist.dart';
 
 /// Turning the shutter on, when the phone can actually do it.
 ///
@@ -63,7 +63,6 @@ class SettingsScreen extends ConsumerWidget {
     final code = ref.watch(localeProvider);
     final wallets = ref.watch(allWalletsProvider).value ?? [];
     final rules = ref.watch(ruleRowsProvider).value ?? [];
-    final notif = ref.watch(notificationAccessProvider).value ?? false;
 
     return Scaffold(
       appBar: AppBar(title: Text(s('settings'))),
@@ -71,26 +70,13 @@ class SettingsScreen extends ConsumerWidget {
         _header(context, s('cloud_sync')),
         const SyncTile(),
         if (!kIsWeb) ...[
-        _header(context, s('permissions')),
-        ListTile(
-          leading: Icon(notif ? Icons.notifications_active : Icons.notifications_off_outlined, color: notif ? Colors.green : Colors.orange),
-          title: Text(s('notif_access')),
-          subtitle: Text('${notif ? s('granted') : s('not_granted')}\n${s('notif_access_desc')}'),
-          isThreeLine: true,
-          trailing: notif ? null : FilledButton.tonal(onPressed: () async { await MessageChannel.openNotificationAccessSettings(); ref.invalidate(notificationAccessProvider); }, child: Text(s('enable'))),
-        ),
-        FutureBuilder<PermissionStatus>(
-          future: Permission.sms.status,
-          builder: (_, snap) {
-            final granted = snap.data?.isGranted ?? false;
-            return ListTile(
-              leading: Icon(granted ? Icons.sms : Icons.sms_outlined, color: granted ? Colors.green : Colors.grey),
-              title: Text(s('sms_access')),
-              subtitle: Text(granted ? s('granted') : s('not_granted')),
-              trailing: granted ? null : FilledButton.tonal(onPressed: () async { await Permission.sms.request(); ref.invalidate(notificationAccessProvider); }, child: Text(s('enable'))),
-            );
-          },
-        ),
+          _header(context, s('health_title')),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 12),
+            child: CaptureChecklist(dense: true),
+          ),
+          _header(context, s('captures_title')),
+          const CapturesEditor(),
         ],
         ListTile(
           leading: const Icon(Icons.help_outline),

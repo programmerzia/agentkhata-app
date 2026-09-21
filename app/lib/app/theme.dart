@@ -51,7 +51,7 @@ class AppTheme {
 
   /// One radius system, three values — the same contract as the web tokens.
   static const radiusControl = 8.0;
-  static const radiusCard = 12.0;
+  static const radiusCard = 16.0;
 
   static ThemeData _base(Brightness b) {
     final scheme = ColorScheme.fromSeed(
@@ -65,19 +65,35 @@ class AppTheme {
       fontFamily: _sans,
       fontFamilyFallback: const ['Noto Sans Bengali'],
       visualDensity: VisualDensity.comfortable,
+      // A hairline instead of a shadow: on the cheap, bright screens agents
+      // use, soft shadows vanish and cards blur into the page.
       cardTheme: CardThemeData(
         elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(radiusCard)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(radiusCard),
+          side: BorderSide(color: scheme.outlineVariant.withValues(alpha: .6)),
+        ),
         color: b == Brightness.light ? card : scheme.surfaceContainerLow,
+      ),
+      appBarTheme: AppBarTheme(
+        backgroundColor: b == Brightness.light ? page : navy,
+        surfaceTintColor: Colors.transparent,
+        centerTitle: false,
+        titleTextStyle: TextStyle(fontFamily: _sans, fontSize: 20, fontWeight: FontWeight.w700, color: b == Brightness.light ? ink : ivory),
+      ),
+      floatingActionButtonTheme: const FloatingActionButtonThemeData(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(18))),
       ),
       inputDecorationTheme: InputDecorationTheme(
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(radiusControl)),
         isDense: true,
       ),
       listTileTheme: const ListTileThemeData(dense: true),
-      navigationBarTheme: const NavigationBarThemeData(
-        height: 64,
+      navigationBarTheme: NavigationBarThemeData(
+        height: 66,
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+        indicatorColor: scheme.primary.withValues(alpha: .14),
+        backgroundColor: b == Brightness.light ? card : scheme.surfaceContainer,
       ),
       // Money, balances and counts. Tabular so columns align.
       textTheme: const TextTheme(

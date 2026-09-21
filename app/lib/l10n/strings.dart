@@ -150,6 +150,47 @@ class S {
       'সাধারণ প্রশ্নের উত্তর, ইন্টারনেট ছাড়াই।',
       'Answers to the common questions, no network needed.'
     ],
+    // ---- setup: two ways in ----
+    'setup_how': ['কীভাবে শুরু করবেন?', 'How are you starting?'],
+    'setup_new_title': ['নতুন দোকান', 'A new shop'],
+    'setup_new_sub': ['এটাই আমার প্রথম ফোন। ওয়ালেট আর ব্যালেন্স এখানে লিখব।', 'This is my first phone. I will set up wallets and balances here.'],
+    'setup_join_title': ['দোকানে এই ফোন যোগ করুন', 'Add this phone to my shop'],
+    'setup_join_sub': ['অন্য ফোনে এজেন্ট খাতা আগে থেকেই চলছে। এই ফোন বাকি ওয়ালেটগুলো ধরবে।', 'AgentKhata already runs on another phone. This one will capture the rest.'],
+    'setup_join_signin': ['লগইন করে দোকানে যুক্ত হোন', 'Sign in to join your shop'],
+    'setup_join_signin_sub': ['যে নম্বর দিয়ে দোকান খুলেছেন, সেটি দিয়ে লগইন করুন।', 'Sign in with the number you opened the shop with.'],
+    'setup_join_failed': ['যুক্ত করা যায়নি। ইন্টারনেট দেখে আবার চেষ্টা করুন।', 'Could not join. Check the internet and try again.'],
+    'setup_pick_captures': ['এই ফোনে কোন কোন ওয়ালেট আছে?', 'Which wallets are on this phone?'],
+    'setup_pick_captures_sub': ['যেগুলোর অ্যাপ এই ফোনে আছে, সেগুলো আগে থেকেই টিক দেওয়া। এই ফোন শুধু এগুলোর লেনদেন লিখবে।', 'The ones whose apps are on this phone are already ticked. This phone records only these.'],
+    'setup_found_app': ['অ্যাপ পাওয়া গেছে', 'App found on this phone'],
+    'setup_capture_title': ['লেনদেন নিজে থেকে আসার জন্য', 'So transactions arrive by themselves'],
+    'setup_capture_sub': ['প্রতিটি একবার চাপলেই হবে। সবুজ হলে ঠিক আছে।', 'Tap each once. Green means done.'],
+    'check_notifications': ['অপারেটরের নোটিফিকেশন পড়ার অনুমতি', 'Read operator notifications'],
+    'check_notifications_sub': ['বিকাশ/নগদ/রকেট অ্যাপের লেনদেন নিজে থেকে লিখবে। OTP বা PIN কখনো পড়া হয় না।', 'Records bKash/Nagad/Rocket app transactions. OTP and PIN are never read.'],
+    'check_battery': ['ব্যাটারি সেভার যেন বন্ধ না করে', 'Keep running despite battery saver'],
+    'check_battery_sub': ['না দিলে কয়েক ঘণ্টা পর ফোন এজেন্ট খাতা থামিয়ে দেয়, লেনদেন আর আসে না।', 'Without this, the phone stops AgentKhata after a few hours and entries stop.'],
+    'check_autostart': ['ফোন চালু হলে নিজে চালু হবে', 'Start automatically'],
+    'check_autostart_sub': ['এই ফোনের নিজস্ব "অটো স্টার্ট" তালিকায় এজেন্ট খাতা চালু করে দিন।', 'Turn AgentKhata on in this phone\'s own "Auto start" list.'],
+    'check_autostart_done': ['করে দিয়েছি', 'Done it'],
+    'check_sms': ['SMS পড়ার অনুমতি (ঐচ্ছিক)', 'Read SMS (optional)'],
+    'check_sms_sub': ['অপারেটরের SMS থেকেও লেনদেন ধরবে। নোটিফিকেশন চালু থাকলে লাগে না।', 'Also captures from operator SMS. Not needed if notifications are on.'],
+    'check_fix': ['ঠিক করুন', 'Fix'],
+    'check_ok': ['ঠিক আছে', 'Done'],
+    'health_title': ['এই ফোনের অবস্থা', 'This phone\'s health'],
+    'health_banner': ['লেনদেন নিজে আসছে না — ঠিক করতে চাপুন', 'Transactions are not arriving by themselves — tap to fix'],
+    'captures_title': ['এই ফোন যা ধরে', 'What this phone captures'],
+    'captures_sub': ['অন্য ফোনের ওয়ালেট এখানে বন্ধ রাখুন, সেগুলো সেই ফোনই লিখবে।', 'Leave other phones\' wallets off here; those phones record them.'],
+    'choose_account_title': ['কোন নম্বরটি এই ফোনে?', 'Which number is on this phone?'],
+    'choose_account_sub': ['দোকানে একই অপারেটরের একাধিক নম্বর আছে।', 'The shop has more than one account with this operator.'],
+    'hero_total': ['দোকানে এখন মোট', 'Money in the shop now'],
+    'synced_ago': ['সিংক {when}', 'Synced {when}'],
+    'syncing_now': ['সিংক হচ্ছে…', 'Syncing…'],
+    'sync_offline': ['অফলাইন — সব ফোনেই আছে', 'Offline — all saved on the phone'],
+    'sync_due': ['সাবস্ক্রিপশন বাকি', 'Subscription due'],
+    'steady': ['ঠিক আছে', 'Steady'],
+    'critical_float': ['প্রায় শেষ', 'Almost empty'],
+    'just_now': ['এইমাত্র', 'just now'],
+    'minutes_ago': ['{n} মিনিট আগে', '{n} min ago'],
+    'hours_ago': ['{n} ঘণ্টা আগে', '{n} h ago'],
     'widget_add': ['হোম স্ক্রিনে উইজেট যোগ করুন', 'Add the home screen widget'],
     'widget_desc': [
       'ফোন খুলেই ফ্লোট, নগদ আর আজকের হিসাব দেখুন।',
@@ -197,4 +238,20 @@ class Fmt {
     }
     return '${neg ? '-' : ''}৳$grouped${frac != 0 ? '.${frac.toString().padLeft(2, '0')}' : ''}';
   }
+}
+
+/// Replace `{name}` placeholders.
+String fill(String template, Map<String, Object> values) {
+  var out = template;
+  values.forEach((key, value) => out = out.replaceAll('{$key}', '$value'));
+  return out;
+}
+
+/// "5 minutes ago", in the reader's language and digits.
+String agoText(DateTime at, String code) {
+  final s = S(code);
+  final minutes = DateTime.now().difference(at).inMinutes;
+  if (minutes < 1) return s('just_now');
+  if (minutes < 60) return fill(s('minutes_ago'), {'n': bnDigits('$minutes', code)});
+  return fill(s('hours_ago'), {'n': bnDigits('${minutes ~/ 60}', code)});
 }

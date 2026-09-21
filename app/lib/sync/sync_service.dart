@@ -194,6 +194,29 @@ class SyncService {
     await repo.setMeta('adopt_pending', jsonEncode(needsChoice));
   }
 
+  /// The shop's wallets, for a phone about to join it.
+  Future<List<Map<String, dynamic>>> shopWallets() async {
+    final body = await api.get('/api/m/bootstrap');
+    return (body['wallets'] as List? ?? const []).cast<Map<String, dynamic>>();
+  }
+
+  /// Join a shop that already runs AgentKhata on another phone.
+  ///
+  /// The phone takes the shop's wallets as they are — with the shop's opening
+  /// balances, because there is one set of books — records which of them it
+  /// captures, and reports that at once so the portal's coverage is right
+  /// before the first transaction arrives. The cash drawer this phone made for
+  /// itself at first start is folded into the shop's by the adoption that
+  /// runs inside the sync.
+  Future<void> joinShop({required List<Map<String, dynamic>> wallets, required Set<String> captures}) async {
+    for (final w in wallets) {
+      await repo.applyRemote(repo.db.wallets, _walletRow(w), id: w['id'] as String, remoteVersion: (w['version'] as num?)?.toInt() ?? 1);
+    }
+    await repo.setCaptures(captures);
+    await repo.setMeta('last_device_report', '');
+    await syncNow();
+  }
+
   /// Questions the shop asked while adopting: "which of your two bKash numbers
   /// is on this phone?" Answered by [answerChoice].
   Future<List<PendingChoice>> pendingChoices() async {
