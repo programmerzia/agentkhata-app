@@ -209,6 +209,20 @@ nagad`).
 7. **The duplicate case.** Use the simulator's "send the last one again". One
    entry, not two, on both sides.
 
+## 4b. The test server, corebari.net
+
+1. On the box: pull `dev`, `pnpm db:migrate` (0224 and 0225 are new), rebuild.
+2. `scripts/smoke.sh https://agentkhata.corebari.net`.
+3. Install `dist/agentkhata-corebari-net.apk` (built with
+   `--dart-define=AGENTKHATA_API=https://agentkhata.corebari.net`) on each
+   phone. Sign in on the first, create the shop; sign in on the second, choose
+   "join", tick only the accounts that phone's SIMs carry.
+4. Send a real cash-in to each phone with the app swiped away. The entry
+   should appear on the portal dashboard within seconds, tagged with its phone.
+5. Close the day on one phone with a drawer ৳10 short: the portal shows the
+   close and a −৳10 adjustment; typing an entry for that day on the portal is
+   refused until a manager reopens it.
+
 ## 5. Before production
 
 Everything above green, plus:

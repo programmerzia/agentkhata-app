@@ -643,7 +643,32 @@ using the advisor's own suggested amount; and an offline help screen.
 
 Two things stayed unbuilt on purpose, with reasons, under **What is left**.
 
-### What is left
+### Several phones, one shop (2026-09-22)
+
+An agent keeps bKash and Nagad on one handset, Upay on another, Rocket on a
+third. Each phone joins the shop, says which accounts it reads, and every
+operator message it receives becomes an entry on the portal without anyone
+typing it — with the app closed, through a headless engine that drains a
+durable queue.
+
+- **One drawer, many phones.** Joining maps the phone's wallets onto the
+  shop's: one cash drawer, numbered accounts matched by number, and a question
+  ("which of your two bKash numbers is on this phone?") when it is ambiguous.
+- **Nothing twice.** A trx id seen by two phones, a second cash drawer, and a
+  second standing commission rule all come back `merged` with the surviving id.
+  Day closes are keyed by date and wallet so two phones closing the same
+  drawer collide instead of doubling.
+- **A shop that can see its phones.** Every push carries a health report; the
+  Phones page shows coverage per account, last capture, and what each phone
+  still needs (battery exemption, notification access).
+- **Offline both ways.** The phone is the ledger and syncs when it can. The
+  portal is a PWA: entries typed offline queue and land exactly once.
+- **Portal chrome.** Live pulse every 8 seconds, a Bangla clock, fullscreen,
+  install prompt.
+- **Day close that means it.** Blank is "not counted", not "matched"; a short
+  drawer posts a negative adjustment (migration 0225); a closed day refuses
+  portal writes until a manager reopens it.
+
 
 - **P5 deploy.** `docker/compose.vps.yml`, `docker/Caddyfile.vps` and the CI
   publish matrix all carry AgentKhata. Deploying needs DNS for

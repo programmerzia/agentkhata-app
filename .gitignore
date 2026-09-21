@@ -9,3 +9,4 @@ app/android/local.properties
 # Flutter tool output
 app/.flutter-plugins-dependencies
 app/ios/Flutter/ephemeral/
+dist/
