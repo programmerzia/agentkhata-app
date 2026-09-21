@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 
@@ -366,16 +368,145 @@ class Repository {
   Future<int> customUpdate(String sql, {required List<Variable> variables, required Set<TableInfo> updates}) => db.customUpdate(sql, variables: variables, updates: updates);
   Selectable<QueryRow> customSelect(String sql, {required List<Variable> variables}) => db.customSelect(sql, variables: variables);
 
-  /// Moves everything that referenced wallet [from] onto [to] and removes [from].
-  Future<void> replaceWalletId({required String from, required String to, required core.WalletKind kind, required String label, required int openingBalance, required DateTime openingAt}) =>
+  // ---------- several phones, one shop ----------
+
+  static const _capturesKey = 'captures';
+
+  /// The wallets this phone captures for, or null for "all of them".
+  ///
+  /// Null is a phone that has never joined a shop: everything on it is its
+  /// own. Once it joins, the server's answer — bKash and Nagad here, Upay on
+  /// the next handset — is stored here and ingestion honours it.
+  Future<Set<String>?> captures() async {
+    final raw = await meta(_capturesKey);
+    if (raw == null) return null;
+    return (jsonDecode(raw) as List).cast<String>().toSet();
+  }
+
+  Future<void> setCaptures(Iterable<String> walletIds) =>
+      setMeta(_capturesKey, jsonEncode(walletIds.toList()));
+
+  /// The wallet a message of this operator belongs in, and whether this phone
+  /// is the one that records it.
+  Future<({core.Wallet? wallet, bool captured})> walletForCapture(core.WalletKind kind) async {
+    final rows = await (db.select(db.wallets)
+          ..where((w) => w.kind.equalsValue(kind) & w.isActive.equals(true) & w.deletedAt.isNull())
+          ..orderBy([(w) => OrderingTerm.asc(w.sortOrder), (w) => OrderingTerm.asc(w.label)]))
+        .get();
+    if (rows.isEmpty) return (wallet: null, captured: false);
+    final mine = await captures();
+    if (mine == null) return (wallet: rows.first.toDomain(), captured: true);
+    for (final row in rows) {
+      if (mine.contains(row.id)) return (wallet: row.toDomain(), captured: true);
+    }
+    return (wallet: rows.first.toDomain(), captured: false);
+  }
+
+  /// Wallets made on this phone that the shop has never seen.
+  ///
+  /// Version 0 is the marker: the server assigns versions, so a row still at
+  /// zero has never been accepted by it. These go through adoption, never
+  /// through a plain push, because deciding which shop wallet they ARE is the
+  /// server's job and every entry posted to them depends on the answer.
+  Future<List<WalletRow>> unadoptedWallets() =>
+      (db.select(db.wallets)..where((w) => w.version.equals(0) & w.deletedAt.isNull())).get();
+
+  /// Take the shop's copy of a wallet, and move this phone's local one onto it.
+  ///
+  /// The shop's label, number, opening balance and version win: the books are
+  /// shared, so there is one opening, and it is the shop's.
+  Future<void> adoptWallet({required String localId, required WalletsCompanion server}) =>
       db.transaction(() async {
-        await db.into(db.wallets).insertOnConflictUpdate(WalletsCompanion(
-          id: Value(to), kind: Value(kind), label: Value(label), openingBalance: Value(openingBalance), openingAt: Value(openingAt),
-          updatedAt: Value(DateTime.fromMillisecondsSinceEpoch(0)), dirty: const Value(false),
-        ));
-        await (db.update(db.transactions)..where((t) => t.walletId.equals(from))).write(TransactionsCompanion(walletId: Value(to), updatedAt: Value(DateTime.now()), dirty: const Value(true)));
-        await (db.update(db.transactions)..where((t) => t.counterWalletId.equals(from))).write(TransactionsCompanion(counterWalletId: Value(to), updatedAt: Value(DateTime.now()), dirty: const Value(true)));
-        await (db.update(db.dayCloses)..where((d) => d.walletId.equals(from))).write(DayClosesCompanion(walletId: Value(to), updatedAt: Value(DateTime.now()), dirty: const Value(true)));
-        await (db.delete(db.wallets)..where((w) => w.id.equals(from))).go();
+        final serverId = server.id.value;
+        await db.into(db.wallets).insertOnConflictUpdate(server.copyWith(dirty: const Value(false)));
+        if (serverId != localId) {
+          await _moveWalletReferences(from: localId, to: serverId);
+          await (db.delete(db.wallets)..where((w) => w.id.equals(localId))).go();
+        }
       });
+
+  /// A wallet the server said is really another one it already has.
+  Future<void> mergeWalletInto({required String from, required String to}) => db.transaction(() async {
+        final target = await (db.select(db.wallets)..where((w) => w.id.equals(to))).getSingleOrNull();
+        if (target == null) {
+          // Take the canonical id now; the shop's copy arrives on the next
+          // pull and, being newer than version 0, overwrites this one.
+          await customUpdate(
+            'UPDATE wallets SET id = ?, version = 0, dirty = 0 WHERE id = ?',
+            variables: [Variable.withString(to), Variable.withString(from)],
+            updates: {db.wallets},
+          );
+        }
+        await _moveWalletReferences(from: from, to: to);
+        if (target != null) await (db.delete(db.wallets)..where((w) => w.id.equals(from))).go();
+      });
+
+  Future<void> _moveWalletReferences({required String from, required String to}) async {
+    final now = Value(DateTime.now());
+    await (db.update(db.transactions)..where((t) => t.walletId.equals(from)))
+        .write(TransactionsCompanion(walletId: Value(to), updatedAt: now, dirty: const Value(true)));
+    await (db.update(db.transactions)..where((t) => t.counterWalletId.equals(from)))
+        .write(TransactionsCompanion(counterWalletId: Value(to), updatedAt: now, dirty: const Value(true)));
+    await (db.update(db.dayCloses)..where((d) => d.walletId.equals(from)))
+        .write(DayClosesCompanion(walletId: Value(to), updatedAt: now, dirty: const Value(true)));
+  }
+
+  /// This phone's copy of a transaction the shop already had under another id.
+  ///
+  /// The same operator transaction captured twice — by the SMS and the
+  /// notification, or by two phones. The server keeps one row and names it;
+  /// this phone drops its own id for that one, so a later void or edit lands
+  /// on the row everyone else sees instead of on a phantom.
+  Future<void> rekeyTransaction({required String from, required String to}) => db.transaction(() async {
+        final canonical = await (db.select(db.transactions)..where((t) => t.id.equals(to))).getSingleOrNull();
+        if (canonical == null) {
+          // Version 0 so the server's copy, arriving on the next pull,
+          // replaces this one wholesale.
+          await customUpdate(
+            'UPDATE transactions SET id = ?, version = 0, dirty = 0 WHERE id = ?',
+            variables: [Variable.withString(to), Variable.withString(from)],
+            updates: {db.transactions},
+          );
+        } else {
+          await (db.delete(db.transactions)..where((t) => t.id.equals(from))).go();
+        }
+        await (db.update(db.rawMessages)..where((m) => m.parsedTransactionId.equals(from)))
+            .write(RawMessagesCompanion(parsedTransactionId: Value(to)));
+      });
+
+  /// A rate this phone seeded that the shop already has. The shop's arrives
+  /// on the next pull; this copy just goes.
+  Future<void> dropRule(String id) => (db.delete(db.commissionRules)..where((r) => r.id.equals(id))).go();
+
+  /// Apply a transaction the server sent, making room if this phone holds the
+  /// same operator transaction under its own id.
+  ///
+  /// Without this the local unique index on (wallet, TrxID) refused the
+  /// server's row, the exception aborted the pull, the cursor never moved, and
+  /// sync failed on every attempt from then on — permanently, on any phone
+  /// that had captured a transaction another phone captured too.
+  Future<void> applyRemoteTransaction(
+    TransactionsCompanion row, {
+    required String id,
+    required String walletId,
+    required String? trxId,
+    required int remoteVersion,
+  }) async {
+    if (trxId != null) {
+      final clash = await (db.select(db.transactions)
+            ..where((t) => t.walletId.equals(walletId) & t.trxId.equals(trxId) & t.id.equals(id).not()))
+          .getSingleOrNull();
+      if (clash != null) await rekeyTransaction(from: clash.id, to: id);
+    }
+    await applyRemote(db.transactions, row, id: id, remoteVersion: remoteVersion);
+  }
+
+  /// A customer from the shop's book. Last writer wins, as on the server —
+  /// but a customer this phone has edited and not yet pushed is left alone.
+  Future<void> applyRemoteCustomer(CustomersCompanion row) async {
+    final id = row.id.value;
+    final existing = await (db.select(db.customers)..where((c) => c.id.equals(id))).getSingleOrNull();
+    if (existing != null && existing.dirty) return;
+    await db.into(db.customers).insertOnConflictUpdate(row.copyWith(dirty: const Value(false)));
+  }
 }

@@ -153,6 +153,17 @@ class AppDatabase extends _$AppDatabase {
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
+        /*
+         * Two engines can hold this file at once: the UI, and the background
+         * engine that captures while the app is closed. WAL lets one read
+         * while the other writes, and the busy timeout makes a writer wait its
+         * turn for a few seconds instead of failing the instant the other
+         * holds the lock — which, mid-capture, would be a lost transaction.
+         */
+        beforeOpen: (details) async {
+          await customStatement('PRAGMA busy_timeout = 5000');
+          await customStatement('PRAGMA journal_mode = WAL');
+        },
         onCreate: (m) async {
           await m.createAll();
           await customStatement('CREATE INDEX idx_tx_occurred ON transactions(occurred_at)');

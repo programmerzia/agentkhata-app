@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../l10n/strings.dart';
+import '../../platform/message_channel.dart';
 import '../../sync/api_client.dart';
 import '../../sync/sync_providers.dart';
 
@@ -88,7 +89,10 @@ class _ConnectTileState extends ConsumerState<_ConnectTile> {
        * revoke a lost one. A model string is a poor name and still far better
        * than a uuid.
        */
-      final paired = await ref.read(deviceSessionProvider).pair(deviceName: 'Android phone');
+      // The portal's phones page lists devices by this name; "Tecno Spark 20"
+      // tells an owner which handset it is, "Android phone" three times does not.
+      final identity = await MessageChannel.identity();
+      final paired = await ref.read(deviceSessionProvider).pair(deviceName: identity?.model ?? 'Android phone');
       if (!paired) {
         setState(() => error = ref.s('connect_failed'));
         return;

@@ -7,6 +7,7 @@ import '../core/core.dart' as core;
 import '../data/database.dart';
 import '../data/ingestion_service.dart';
 import '../data/repository.dart';
+import '../capture/queue_processor.dart';
 import '../platform/message_channel.dart';
 
 final databaseProvider = Provider<AppDatabase>((ref) {
@@ -101,27 +102,24 @@ final receivablesProvider = Provider<Map<String, core.Paisa>>((ref) {
   return const core.Reports().receivables(txs);
 });
 
-/// Listens to the native message stream for the lifetime of the app and
-/// pushes every message through the ingestion pipeline.
+/// Keeps the capture queue drained while the UI is up.
+///
+/// Every captured message is already on disk in the native queue; this only
+/// decides WHEN the UI engine processes it — on start, and whenever the native
+/// side wakes it. With the UI closed, the background engine runs the same
+/// [processCaptureQueue] instead.
 final messageListenerProvider = Provider<void>((ref) {
   final ingest = ref.watch(ingestionProvider);
-  Future<void> handle(IncomingMessage m) => ingest.ingest(
-        body: m.body,
-        sender: m.sender,
-        packageName: m.packageName,
-        source: m.isSms ? core.TxSource.autoSms : core.TxSource.autoNotification,
-        receivedAt: m.receivedAt,
-      );
-  unawaited(() async {
+  Future<void> run() async {
     try {
-      for (final m in await MessageChannel.drainQueue()) {
-        await handle(m);
-      }
-    } catch (_) {/* not on Android or channel missing */}
-  }());
-  StreamSubscription? sub;
+      await processCaptureQueue(ingest);
+    } catch (_) {/* not on Android, or the channel is missing */}
+  }
+
+  unawaited(run());
+  StreamSubscription<void>? sub;
   try {
-    sub = MessageChannel.stream().listen(handle, onError: (_) {});
+    sub = MessageChannel.wakes().listen((_) => run(), onError: (_) {});
   } catch (_) {}
   ref.onDispose(() => sub?.cancel());
 });

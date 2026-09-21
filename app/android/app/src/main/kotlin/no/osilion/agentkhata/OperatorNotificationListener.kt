@@ -7,6 +7,10 @@ import android.service.notification.StatusBarNotification
 /**
  * Primary capture path (no SMS permission needed). Only the operator apps
  * listed in [PACKAGES] are read; every other notification is ignored.
+ *
+ * Android keeps this service bound — and restarts the process to deliver to
+ * it — for as long as notification access is on, which is why it is the
+ * thing that starts the background engine when the app is closed.
  */
 class OperatorNotificationListener : NotificationListenerService() {
     companion object {
@@ -34,5 +38,6 @@ class OperatorNotificationListener : NotificationListenerService() {
             "isSms" to false,
             "at" to sbn.postTime,
         ))
+        MessageQueue.wake(applicationContext)
     }
 }

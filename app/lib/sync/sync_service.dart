@@ -1,9 +1,13 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:math' as math;
 
 import 'package:drift/drift.dart';
 
+import '../core/core.dart' as core;
 import '../data/database.dart';
 import '../data/repository.dart';
+import '../platform/message_channel.dart';
 import 'api_client.dart';
 import 'enum_index.dart';
 
@@ -42,16 +46,30 @@ class SyncService {
   final ApiClient api;
 
   Timer? _debounce;
+  Timer? _retry;
   bool _running = false;
+  bool _again = false;
+  int _failures = 0;
   final _status = StreamController<SyncStatus>.broadcast();
   Stream<SyncStatus> get status => _status.stream;
   SyncStatus last = const SyncStatus.idle();
 
-  static const _tables = ['wallets', 'entries', 'day_closes', 'commission_rules'];
+  static const _tables = ['wallets', 'entries', 'day_closes', 'commission_rules', 'parties'];
+
+  /// How long to wait after the n-th consecutive failure.
+  ///
+  /// A phone in a basement bazaar fails every sync for an hour. Retrying every
+  /// few seconds drains the battery and the data pack for nothing; waiting
+  /// five minutes after the first failure makes a phone that got signal back
+  /// look broken. So: quick at first, then patient, never beyond fifteen
+  /// minutes — and connectivity returning cuts straight through the wait.
+  static const _backoff = [Duration(seconds: 5), Duration(seconds: 20), Duration(minutes: 1), Duration(minutes: 5), Duration(minutes: 15)];
 
   void stop() {
     _debounce?.cancel();
     _debounce = null;
+    _retry?.cancel();
+    _retry = null;
   }
 
   void scheduleSync([Duration delay = const Duration(seconds: 3)]) {
@@ -60,27 +78,56 @@ class SyncService {
   }
 
   Future<void> syncNow() async {
-    if (_running) return;
+    // A trigger that arrives mid-sync is remembered, not dropped: the write
+    // that caused it happened after this sync read its dirty rows.
+    if (_running) {
+      _again = true;
+      return;
+    }
+    // The other engine is syncing. It will pick up these rows too; look again
+    // shortly in case it finished before seeing them.
+    if (!await MessageChannel.tryLock('sync', const Duration(seconds: 90))) {
+      scheduleSync(const Duration(seconds: 15));
+      return;
+    }
     _running = true;
+    _again = false;
     _emit(const SyncStatus.syncing());
     try {
-      await _reconcileWallets();
+      await _adopt();
       await _push();
       await _pull();
+      _failures = 0;
+      _retry?.cancel();
       _emit(SyncStatus.ok(DateTime.now()));
     } on ApiException catch (e) {
       if (e.isReadOnly) {
         _emit(const SyncStatus.readOnly());
+        _scheduleRetry(const Duration(minutes: 30));
       } else if (e.isUnauthorised) {
         _emit(const SyncStatus.unpaired());
       } else {
         _emit(SyncStatus.error(e.toString()));
+        _fail();
       }
     } catch (e) {
       _emit(SyncStatus.error(e.toString()));
+      _fail();
     } finally {
       _running = false;
+      await MessageChannel.unlock('sync');
+      if (_again) scheduleSync(const Duration(seconds: 1));
     }
+  }
+
+  void _fail() {
+    _failures++;
+    _scheduleRetry(_backoff[math.min(_failures, _backoff.length) - 1]);
+  }
+
+  void _scheduleRetry(Duration after) {
+    _retry?.cancel();
+    _retry = Timer(after, syncNow);
   }
 
   void _emit(SyncStatus s) {
@@ -88,52 +135,89 @@ class SyncService {
     _status.add(s);
   }
 
-  /// Adopt the shop's wallets before pushing anything.
+  String _iso(DateTime d) => d.toUtc().toIso8601String();
+
+  /// Join this phone's own wallets to the shop's.
   ///
-  /// A phone that ran offline created its own wallets, including a cash
-  /// drawer. If the business already has them — because the portal set them up
-  /// or another phone did — pushing the local ones produces two bKash wallets
-  /// and a cash total that is the sum of two halves of the same drawer.
-  ///
-  /// So on every sync the phone asks what the counter already has and maps its
-  /// local rows onto those ids, matching on (kind, account number) and falling
-  /// back to kind alone when only one candidate exists. Anything genuinely
-  /// ambiguous is left alone and pushed as a new wallet, which an owner can
-  /// merge on the portal — a wrong automatic merge is much worse than a
-  /// duplicate somebody can see and fix.
-  Future<void> _reconcileWallets() async {
-    final body = await api.get('/api/m/bootstrap');
-    final remote = (body['wallets'] as List? ?? []).cast<Map<String, dynamic>>();
-    if (remote.isEmpty) return;
+  /// Only wallets the shop has never seen go through here — made during this
+  /// phone's setup, or added in its settings. The server decides which shop
+  /// wallet each one IS: the one cash drawer, the account with that number, or
+  /// a new wallet; and when the shop holds two accounts of the same operator
+  /// it asks, and this phone keeps the question until a person answers it
+  /// (see [pendingChoices]). Entries posted to an unanswered wallet wait.
+  Future<void> _adopt() async {
+    final locals = await repo.unadoptedWallets();
+    if (locals.isEmpty) return;
 
-    final locals = await repo.dirtyWallets();
-    for (final local in locals) {
-      final kind = local.kind.name;
-      final candidates = remote.where((r) => r['kind'] == kind).toList();
-      if (candidates.isEmpty) continue;
+    final choicesRaw = await repo.meta('adopt_choices');
+    final identity = await MessageChannel.identity();
+    final body = await api.post('/api/m/devices/adopt', {
+      'wallets': [
+        for (final w in locals)
+          {
+            'localId': w.id,
+            'kind': w.kind.name,
+            'label': w.label,
+            'accountNumber': w.accountNumber,
+            'openingPoisha': w.openingBalance.toString(),
+            'openingAt': _iso(w.openingAt),
+            'captures': w.kind != core.WalletKind.cash,
+          }
+      ],
+      'choices': choicesRaw == null ? const <String, String>{} : jsonDecode(choicesRaw),
+      'device': {
+        if (identity != null) 'model': identity.model,
+        if (identity != null) 'appVersion': identity.appVersion,
+      },
+    });
 
-      Map<String, dynamic>? match;
-      if (local.accountNumber != null && local.accountNumber!.isNotEmpty) {
-        match = candidates.cast<Map<String, dynamic>?>().firstWhere(
-              (r) => r?['accountNumber'] == local.accountNumber,
-              orElse: () => null,
-            );
-      }
-      match ??= candidates.length == 1 ? candidates.first : null;
-      if (match == null) continue;
+    final mapping = (body['mapping'] as Map? ?? const {}).cast<String, String>();
+    final shopWallets = (body['wallets'] as List? ?? const []).cast<Map<String, dynamic>>();
+    final byId = {for (final w in shopWallets) w['id'] as String: w};
 
-      final remoteId = match['id'] as String;
-      if (remoteId == local.id) continue;
-
-      await repo.replaceWalletId(
-        from: local.id,
-        to: remoteId,
-        kind: local.kind,
-        label: local.label,
-        openingBalance: local.openingBalance,
-        openingAt: local.openingAt,
-      );
+    for (final entry in mapping.entries) {
+      final server = byId[entry.value];
+      if (server != null) await repo.adoptWallet(localId: entry.key, server: _walletRow(server));
     }
+    // The rest of the shop's wallets, so this phone's books are whole — its
+    // cash total includes the Upay phone's takings, because it is one drawer.
+    for (final w in shopWallets) {
+      if (mapping.containsValue(w['id'])) continue;
+      await repo.applyRemote(repo.db.wallets, _walletRow(w), id: w['id'] as String, remoteVersion: (w['version'] as num?)?.toInt() ?? 1);
+    }
+
+    final captured = (body['captures'] as List? ?? const []).cast<String>();
+    final already = await repo.captures() ?? <String>{};
+    await repo.setCaptures({...already, ...captured});
+
+    final needsChoice = body['needsChoice'] as List? ?? const [];
+    await repo.setMeta('adopt_pending', jsonEncode(needsChoice));
+  }
+
+  /// Questions the shop asked while adopting: "which of your two bKash numbers
+  /// is on this phone?" Answered by [answerChoice].
+  Future<List<PendingChoice>> pendingChoices() async {
+    final raw = await repo.meta('adopt_pending');
+    if (raw == null) return const [];
+    return [
+      for (final item in (jsonDecode(raw) as List).cast<Map<String, dynamic>>())
+        PendingChoice(
+          localId: item['localId'] as String,
+          kind: WalletKindIndex.ofName(item['kind']),
+          candidates: [
+            for (final c in (item['candidates'] as List).cast<Map<String, dynamic>>())
+              (id: c['id'] as String, label: c['label'] as String, accountNumber: c['accountNumber'] as String?),
+          ],
+        ),
+    ];
+  }
+
+  Future<void> answerChoice({required String localId, required String serverWalletId}) async {
+    final raw = await repo.meta('adopt_choices');
+    final choices = raw == null ? <String, dynamic>{} : jsonDecode(raw) as Map<String, dynamic>;
+    choices[localId] = serverWalletId;
+    await repo.setMeta('adopt_choices', jsonEncode(choices));
+    scheduleSync(Duration.zero);
   }
 
   Future<void> _push() async {
@@ -141,16 +225,39 @@ class SyncService {
     String iso(DateTime d) => d.toUtc().toIso8601String();
     String? isoN(DateTime? d) => d == null ? null : iso(d);
 
-    final walletRows = await repo.dirtyWallets();
-    final entryRows = await repo.dirtyTransactions();
-    final closeRows = await repo.dirtyDayCloses();
-    final ruleRows = await repo.dirtyRules();
+    // Rows that point at a wallet the shop has not placed yet wait for it:
+    // pushed now, they would name an id the server has never heard of.
+    final waiting = {for (final w in await repo.unadoptedWallets()) w.id};
+    bool placed(String? walletId) => walletId == null || !waiting.contains(walletId);
 
-    if (walletRows.isEmpty && entryRows.isEmpty && closeRows.isEmpty && ruleRows.isEmpty) {
-      return;
-    }
+    final walletRows = (await repo.dirtyWallets()).where((w) => w.version > 0).toList();
+    final entryRows = (await repo.dirtyTransactions()).where((t) => placed(t.walletId) && placed(t.counterWalletId)).toList();
+    final closeRows = (await repo.dirtyDayCloses()).where((c) => placed(c.walletId)).toList();
+    final ruleRows = await repo.dirtyRules();
+    final customerRows = await repo.dirtyCustomers();
+
+    final nothingDirty = walletRows.isEmpty && entryRows.isEmpty && closeRows.isEmpty && ruleRows.isEmpty && customerRows.isEmpty;
+
+    /*
+     * The phone reports on itself with every push, and at least every ten
+     * minutes when there is nothing else to send — that heartbeat is how the
+     * portal can say "the Rocket phone has been silent since 11:40" before the
+     * owner finds out from a drawer that does not balance.
+     */
+    final lastReport = DateTime.tryParse(await repo.meta('last_device_report') ?? '');
+    final reportDue = lastReport == null || DateTime.now().difference(lastReport) > const Duration(minutes: 10);
+    if (nothingDirty && !reportDue) return;
 
     final payload = <String, dynamic>{
+      'device': await _deviceReport(),
+      'parties': [
+        for (final c in customerRows)
+          {
+            'id': c.id,
+            'name': c.name,
+            'phone': c.phone,
+          }
+      ],
       'wallets': [
         for (final w in walletRows)
           {
@@ -219,10 +326,27 @@ class SyncService {
     final response = await api.post('/api/m/sync/push', payload);
     final results = response['results'] as Map<String, dynamic>? ?? const {};
 
-    await _settle(db.wallets, results['wallets']);
-    await _settle(db.transactions, results['entries']);
-    await _settle(db.dayCloses, results['dayCloses']);
-    await _settle(db.commissionRules, results['commissionRules']);
+    final rejected = <String, String>{};
+    await _settle(db.customers, results['parties'], rejected);
+    await _settle(db.wallets, results['wallets'], rejected);
+    await _settle(db.transactions, results['entries'], rejected);
+    await _settle(db.dayCloses, results['dayCloses'], rejected);
+    await _settle(db.commissionRules, results['commissionRules'], rejected);
+    await repo.setMeta('rejections', jsonEncode(rejected));
+    await repo.setMeta('last_device_report', DateTime.now().toIso8601String());
+  }
+
+  Future<Map<String, dynamic>> _deviceReport() async {
+    final health = await MessageChannel.health();
+    final identity = await MessageChannel.identity();
+    final captures = await repo.captures();
+    return {
+      if (identity != null) 'model': identity.model,
+      if (identity != null) 'appVersion': identity.appVersion,
+      if (captures != null) 'captures': captures.toList(),
+      if (health?.lastCaptureAt != null) 'lastCaptureAt': _iso(health!.lastCaptureAt!),
+      if (health != null) 'health': health.toJson(),
+    };
   }
 
   /// Mark accepted rows clean and record the versions the server assigned.
@@ -232,24 +356,42 @@ class SyncService {
   /// change touched `status`, in which case the next push re-sends it on the
   /// version the server just told us about — the status-wins rule, implemented
   /// as one line rather than a branch that can drift.
-  Future<void> _settle(TableInfo table, dynamic rawResults) async {
+  ///
+  /// A MERGED row was the same thing as one the shop already had — the same
+  /// operator transaction from another phone, a second copy of a default rate.
+  /// This phone gives up its own id for the shop's.
+  ///
+  /// A REJECTED row stays dirty and its reason is kept, so the sync screen can
+  /// say "3 entries are waiting: unknown customer" instead of retrying in
+  /// silence.
+  Future<void> _settle(TableInfo table, dynamic rawResults, Map<String, String> rejected) async {
     final results = (rawResults as List? ?? []).cast<Map<String, dynamic>>();
     final clean = <String>[];
     for (final result in results) {
       final id = result['id'] as String?;
       if (id == null) continue;
       final status = result['status'] as String?;
-      if (status == 'ok') {
-        clean.add(id);
-        final version = result['version'];
-        if (version is int) await repo.setVersion(table, id, version);
-      } else if (status == 'conflict') {
-        final version = result['version'];
-        if (version is int) await repo.setVersion(table, id, version);
-        await repo.resolveConflict(table, id);
+      final version = result['version'];
+      switch (status) {
+        case 'ok':
+          clean.add(id);
+          if (version is int) await repo.setVersion(table, id, version);
+        case 'merged':
+          final canonical = result['canonicalId'] as String?;
+          if (canonical == null) break;
+          if (table.actualTableName == repo.db.transactions.actualTableName) {
+            await repo.rekeyTransaction(from: id, to: canonical);
+          } else if (table.actualTableName == repo.db.wallets.actualTableName) {
+            await repo.mergeWalletInto(from: id, to: canonical);
+          } else if (table.actualTableName == repo.db.commissionRules.actualTableName) {
+            await repo.dropRule(id);
+          }
+        case 'conflict':
+          if (version is int) await repo.setVersion(table, id, version);
+          await repo.resolveConflict(table, id);
+        case 'rejected':
+          rejected['${table.actualTableName}:$id'] = result['reason'] as String? ?? 'rejected';
       }
-      // 'rejected' rows stay dirty and are reported by the next sync. A row the
-      // server will never accept would otherwise retry forever in silence.
     }
     await repo.markClean(table, clean);
   }
@@ -298,26 +440,12 @@ class SyncService {
       case 'wallets':
         await repo.applyRemote(
           db.wallets,
-          WalletsCompanion(
-            id: Value(r['id'] as String),
-            kind: Value(WalletKindIndex.ofName(r['kind'])),
-            label: Value(r['label'] as String),
-            accountNumber: Value(r['accountNumber'] as String?),
-            isActive: Value(r['isActive'] as bool? ?? true),
-            openingBalance: Value(money(r['openingPoisha'])),
-            openingAt: Value(dt(r['openingAt'])),
-            sortOrder: Value((r['sortOrder'] as num?)?.toInt() ?? 0),
-            version: Value((r['version'] as num?)?.toInt() ?? 1),
-            updatedAt: Value(dt(r['updatedAt'])),
-            deletedAt: Value(dtN(r['deletedAt'])),
-            dirty: const Value(false),
-          ),
+          _walletRow(r),
           id: r['id'] as String,
           remoteVersion: (r['version'] as num?)?.toInt() ?? 1,
         );
       case 'entries':
-        await repo.applyRemote(
-          db.transactions,
+        await repo.applyRemoteTransaction(
           TransactionsCompanion(
             id: Value(r['id'] as String),
             walletId: Value(r['walletId'] as String),
@@ -340,6 +468,8 @@ class SyncService {
             dirty: const Value(false),
           ),
           id: r['id'] as String,
+          walletId: r['walletId'] as String,
+          trxId: r['trxId'] as String?,
           remoteVersion: (r['version'] as num?)?.toInt() ?? 1,
         );
       case 'day_closes':
@@ -380,8 +510,46 @@ class SyncService {
           id: r['id'] as String,
           remoteVersion: (r['version'] as num?)?.toInt() ?? 1,
         );
+      case 'parties':
+        // Archived customers stay archived on the phone by leaving the book.
+        final tags = (r['tags'] as List?)?.cast<String>() ?? const [];
+        await repo.applyRemoteCustomer(CustomersCompanion(
+          id: Value(r['id'] as String),
+          name: Value(r['name'] as String? ?? ''),
+          phone: Value(r['phone'] as String?),
+          note: Value(r['note'] as String?),
+          updatedAt: Value(dt(r['updatedAt'])),
+          deletedAt: Value(tags.contains('archived') ? DateTime.now() : null),
+        ));
     }
   }
+}
+
+/// A wallet row as the server describes it, ready to store.
+WalletsCompanion _walletRow(Map<String, dynamic> r) {
+  DateTime dt(dynamic v) => DateTime.parse(v as String).toLocal();
+  return WalletsCompanion(
+    id: Value(r['id'] as String),
+    kind: Value(WalletKindIndex.ofName(r['kind'])),
+    label: Value(r['label'] as String),
+    accountNumber: Value(r['accountNumber'] as String?),
+    isActive: Value(r['isActive'] as bool? ?? true),
+    openingBalance: Value(int.parse((r['openingPoisha'] ?? '0').toString())),
+    openingAt: Value(dt(r['openingAt'])),
+    sortOrder: Value((r['sortOrder'] as num?)?.toInt() ?? 0),
+    version: Value((r['version'] as num?)?.toInt() ?? 1),
+    updatedAt: Value(dt(r['updatedAt'])),
+    deletedAt: Value(r['deletedAt'] == null ? null : dt(r['deletedAt'])),
+    dirty: const Value(false),
+  );
+}
+
+/// "Which of the shop's bKash accounts is on this phone?"
+class PendingChoice {
+  const PendingChoice({required this.localId, required this.kind, required this.candidates});
+  final String localId;
+  final core.WalletKind kind;
+  final List<({String id, String label, String? accountNumber})> candidates;
 }
 
 class SyncStatus {

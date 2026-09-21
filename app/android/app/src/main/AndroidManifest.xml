@@ -2,6 +2,13 @@
     <!-- Optional: SMS capture. The app works without it via notification access. -->
     <uses-permission android:name="android.permission.RECEIVE_SMS"/>
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!--
+      Asked for once, during setup. On Tecno, Infinix, Xiaomi, Oppo, Realme and
+      Vivo — the phones agents carry — an app that is not exempt from battery
+      optimisation has its notification listener stopped within hours, and
+      capture then fails without a sound until someone opens the app.
+    -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
 
     <application
         android:label="এজেন্ট খাতা"
@@ -83,6 +90,18 @@
          In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
     <queries>
         <package android:name="com.whatsapp"/>
+        <!--
+          The operator apps, so setup can see which ones this phone has and
+          pre-tick "this phone captures bKash and Nagad". Keep in step with
+          OperatorNotificationListener.PACKAGES.
+        -->
+        <package android:name="com.bkash.businessapp"/>
+        <package android:name="com.bkash.customerapp"/>
+        <package android:name="com.konasl.nagad.agent"/>
+        <package android:name="com.konasl.nagad"/>
+        <package android:name="com.dbbl.mbs.apps.main"/>
+        <package android:name="com.ucb.upay"/>
+        <package android:name="com.trustbank.tap"/>
         <intent>
             <action android:name="android.intent.action.SENDTO"/>
             <data android:scheme="sms"/>

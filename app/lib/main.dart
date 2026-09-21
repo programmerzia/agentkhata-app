@@ -2,12 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app/providers.dart';
+import 'capture/background.dart';
 import 'app/router.dart';
 import 'app/theme.dart';
 import 'l10n/strings.dart';
 import 'features/lock/app_lock.dart';
 import 'features/widget/home_widget_sync.dart';
 import 'sync/sync_providers.dart';
+
+/// The headless engine's entry point: capture with the app closed.
+///
+/// Here rather than in its own library because the native side starts it by
+/// name from the root library, and a function the compiler cannot see being
+/// called is tree-shaken away without the pragma.
+@pragma('vm:entry-point')
+Future<void> backgroundMain() => runBackgroundCapture();
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();

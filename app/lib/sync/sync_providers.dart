@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../app/providers.dart';
@@ -45,11 +46,12 @@ final syncStatusProvider = StreamProvider<SyncStatus>((ref) {
 
 /// Runs for the app's lifetime once a device is paired.
 ///
-/// Three triggers, and each earns its place:
+/// Four triggers, and each earns its place:
 ///
 ///   - a local write, debounced, so a burst of captured messages is one push;
 ///   - connectivity returning, because the common case is a phone that was in
 ///     a pocket in a basement bazaar and has ten entries waiting;
+///   - the app coming back to the foreground, when the numbers must be fresh;
 ///   - a five-minute tick while the app is open, which is how a portal edit
 ///     reaches the phone. Push notifications would be better and are the
 ///     backlog item; polling every five minutes costs one request and is
@@ -72,11 +74,17 @@ final syncRunnerProvider = Provider<void>((ref) {
   ];
   final poll = Timer.periodic(const Duration(minutes: 5), (_) => svc.scheduleSync(Duration.zero));
 
+  // Coming back to the app is the moment the agent looks at the numbers, so
+  // it is the moment they must be fresh — whatever the other phones did in
+  // the meantime.
+  final lifecycle = AppLifecycleListener(onResume: () => svc.scheduleSync(const Duration(milliseconds: 500)));
+
   ref.onDispose(() {
     for (final s in subs) {
       s.cancel();
     }
     poll.cancel();
+    lifecycle.dispose();
   });
 });
 

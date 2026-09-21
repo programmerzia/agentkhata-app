@@ -24,5 +24,6 @@ class SmsReceiver : BroadcastReceiver() {
             "isSms" to true,
             "at" to parts[0].timestampMillis,
         ))
+        MessageQueue.wake(context.applicationContext)
     }
 }

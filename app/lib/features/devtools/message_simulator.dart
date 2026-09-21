@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/providers.dart';
 import '../../core/core.dart' as core;
 import '../../data/ingestion_service.dart';
+import '../../sync/sync_providers.dart';
 
 /// A bench for the capture pipeline, with no operator account anywhere.
 ///
@@ -43,6 +44,8 @@ class MessageSimulatorScreen extends ConsumerStatefulWidget {
 class _MessageSimulatorScreenState extends ConsumerState<MessageSimulatorScreen> {
   final _body = TextEditingController();
   final _sender = TextEditingController(text: 'bKash');
+  final _devToken = TextEditingController();
+  final _devTenant = TextEditingController();
   final _log = <_Outcome>[];
   bool _busy = false;
 
@@ -60,6 +63,8 @@ class _MessageSimulatorScreenState extends ConsumerState<MessageSimulatorScreen>
   void dispose() {
     _body.dispose();
     _sender.dispose();
+    _devToken.dispose();
+    _devTenant.dispose();
     super.dispose();
   }
 
@@ -163,6 +168,8 @@ class _MessageSimulatorScreenState extends ConsumerState<MessageSimulatorScreen>
             ),
           ),
           const SizedBox(height: 12),
+          _developerPairing(context),
+          const SizedBox(height: 12),
           FilledButton.icon(
             onPressed: _busy ? null : _replayBusyHour,
             icon: const Icon(Icons.fast_forward),
@@ -256,6 +263,46 @@ class _MessageSimulatorScreenState extends ConsumerState<MessageSimulatorScreen>
       ),
     );
   }
+}
+
+extension on _MessageSimulatorScreenState {
+  /// Pair this phone with a token from `scripts/dev-phone.ts`, skipping the
+  /// browser sign-in. For emulators playing the phones of one shop: the real
+  /// pairing round trip is the slow part of every multi-phone test run.
+  Widget _developerPairing(BuildContext context) => Card(
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Text('Developer pairing', style: Theme.of(context).textTheme.titleSmall),
+            const SizedBox(height: 8),
+            TextField(
+              key: const Key('dev-token'),
+              controller: _devToken,
+              decoration: const InputDecoration(labelText: 'Device token', isDense: true),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              key: const Key('dev-tenant'),
+              controller: _devTenant,
+              decoration: const InputDecoration(labelText: 'Tenant id', isDense: true),
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton(
+              key: const Key('dev-pair'),
+              onPressed: () async {
+                final token = _devToken.text.trim();
+                if (token.isEmpty) return;
+                await ref.read(deviceSessionProvider).save(token: token, tenantId: _devTenant.text.trim());
+                ref.invalidate(deviceTokenProvider);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Paired with developer token')));
+                }
+              },
+              child: const Text('Pair with this token'),
+            ),
+          ]),
+        ),
+      );
 }
 
 /// Fresh transaction id and clock time, so repeated sends are separate events.
