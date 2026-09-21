@@ -31,9 +31,13 @@ enum FloatLevel { ok, watch, low, critical }
 
 /// Predicts when a wallet will run dry based on recent net outflow.
 class FloatAdvisor {
-  const FloatAdvisor({this.lookBack = const Duration(days: 7), this.businessHoursPerDay = 12});
+  const FloatAdvisor({this.lookBack = const Duration(days: 7), this.businessHoursPerDay = 12, this.lowFloatHours = 6});
   final Duration lookBack;
+  /// The shop's trading day, from its settings. Twelve until a shop says otherwise.
   final int businessHoursPerDay;
+  /// Below this many hours of cover a wallet is "low" — the shop's own
+  /// threshold, the same one the portal and the bell use.
+  final int lowFloatHours;
 
   FloatAdvice advise({
     required Wallet wallet,
@@ -81,7 +85,7 @@ class FloatAdvisor {
             ? FloatLevel.ok
             : hours < 2
                 ? FloatLevel.critical
-                : hours < businessHoursPerDay / 2
+                : hours < lowFloatHours
                     ? FloatLevel.low
                     : hours < businessHoursPerDay
                         ? FloatLevel.watch

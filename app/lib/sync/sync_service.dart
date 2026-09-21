@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:drift/drift.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/core.dart' as core;
 import '../data/database.dart';
@@ -95,6 +96,7 @@ class SyncService {
     _emit(const SyncStatus.syncing());
     try {
       await _adopt();
+      await _refreshShopSettings();
       await _push();
       await _pull();
       _failures = 0;
@@ -192,6 +194,23 @@ class SyncService {
 
     final needsChoice = body['needsChoice'] as List? ?? const [];
     await repo.setMeta('adopt_pending', jsonEncode(needsChoice));
+  }
+
+  /// The shop's trading hours and low-float threshold, as set on the portal.
+  ///
+  /// Every half hour at most: they change a few times a year, and bootstrap is
+  /// a request the phone need not make on every sync.
+  Future<void> _refreshShopSettings() async {
+    final last = DateTime.tryParse(await repo.meta('settings_at') ?? '');
+    if (last != null && DateTime.now().difference(last) < const Duration(minutes: 30)) return;
+    final body = await api.get('/api/m/bootstrap');
+    final settings = body['settings'] as Map<String, dynamic>? ?? const {};
+    final prefs = await SharedPreferences.getInstance();
+    final hours = (settings['businessHoursPerDay'] as num?)?.toInt();
+    final low = (settings['lowFloatHours'] as num?)?.toInt();
+    if (hours != null && hours > 0) await prefs.setInt('agentkhata.business_hours', hours);
+    if (low != null && low > 0) await prefs.setInt('agentkhata.low_float_hours', low);
+    await repo.setMeta('settings_at', DateTime.now().toIso8601String());
   }
 
   /// The shop's wallets, for a phone about to join it.

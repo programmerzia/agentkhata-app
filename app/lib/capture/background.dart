@@ -4,6 +4,7 @@ import 'dart:ui';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 import '../app/providers.dart';
 import '../features/widget/home_widget_sync.dart';
@@ -24,6 +25,7 @@ import 'queue_processor.dart';
 Future<void> runBackgroundCapture() async {
   WidgetsFlutterBinding.ensureInitialized();
   DartPluginRegistrant.ensureInitialized();
+  await initializeDateFormatting();
 
   final container = ProviderContainer();
   // Kept alive for the engine's life so the widget follows every capture.

@@ -124,4 +124,15 @@ void main() {
     final idle = const FloatAdvisor().advise(wallet: wallets[1], balance: Paisa.fromTaka(1000), txs: const [], now: now);
     expect(idle.suggestedLift(), Paisa.zero);
   });
+
+  test('debitsWallet agrees with the posting rules for every type', () {
+    for (final type in TxType.values) {
+      final t = tx('sign-${type.name}', type, 100, cust: 'c1', counter: 'cash');
+      final own = ledger
+          .postingsFor(t)
+          .where((p) => p.account.walletId == t.walletId)
+          .fold<int>(0, (sum, p) => sum + p.delta.value);
+      expect(own < 0, type.debitsWallet, reason: '${type.name}: ledger moves the wallet by $own');
+    }
+  });
 }

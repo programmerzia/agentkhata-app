@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../l10n/strings.dart';
 import '../../platform/message_channel.dart';
 import '../../sync/api_client.dart';
+import '../../app/providers.dart';
 import '../../sync/sync_providers.dart';
 
 /// Connecting this phone to CoreBari, and what the connection is doing.
@@ -112,15 +113,18 @@ class _ConnectedTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final s = ref.s;
+    final code = ref.watch(localeProvider);
     final status = ref.watch(syncStatusProvider).value;
     final svc = ref.watch(syncServiceProvider);
 
     final (icon, color, text) = switch (status?.state) {
       'syncing' => (Icons.cloud_sync, Colors.blue, s('syncing')),
-      'ok' => (Icons.cloud_done, Colors.green, '${s('synced')} ${DateFormat('h:mm a').format(status!.at!)}'),
+      'ok' => (Icons.cloud_done, Colors.green, '${s('synced')} ${bnDigits(DateFormat('h:mm a', code == 'bn' ? 'bn' : 'en').format(status!.at!), code)}'),
       'read_only' => (Icons.lock_outline, Colors.orange, s('sync_read_only')),
       'unpaired' => (Icons.link_off, Colors.red, s('sync_unpaired')),
-      'error' => (Icons.cloud_off, Colors.red, '${s('sync_error')}: ${status!.message}'),
+      // The raw error is for a developer, not an agent; the plain line says
+      // the one thing that matters — nothing is lost, it will retry.
+      'error' => (Icons.cloud_off, Colors.red, s('sync_error_plain')),
       _ => (Icons.cloud_outlined, Colors.grey, s('idle')),
     };
 

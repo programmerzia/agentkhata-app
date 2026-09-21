@@ -103,7 +103,7 @@ class Repository {
     return rows.map((r) => r.toDomain()).toList();
   }
 
-  Future<void> insertTransaction(core.Transaction t) => db.into(db.transactions).insert(TransactionsCompanion.insert(
+  Future<void> insertTransaction(core.Transaction t) => db.into(db.transactions).insert(mode: InsertMode.insertOrIgnore, TransactionsCompanion.insert(
         id: t.id,
         walletId: t.walletId,
         type: t.type,

@@ -21,7 +21,7 @@ class TxTile extends ConsumerWidget {
     final color = w == null ? Colors.grey : AppTheme.walletColor(w.kind);
     final debit = t.type.debitsWallet;
     final pending = t.status == TxStatus.pendingReview;
-    final time = DateFormat('d MMM, h:mm a').format(t.occurredAt);
+    final time = DateFormat('d MMM, h:mm a', code == 'bn' ? 'bn' : 'en').format(t.occurredAt);
     final sub = [
       if (w != null) (code == 'bn' ? w.kind.labelBn : w.kind.label),
       if (t.counterparty != null) bnDigits(t.counterparty!, code),

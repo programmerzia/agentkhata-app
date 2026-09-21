@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app/providers.dart';
@@ -18,8 +19,11 @@ import 'sync/sync_providers.dart';
 @pragma('vm:entry-point')
 Future<void> backgroundMain() => runBackgroundCapture();
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Bangla month and weekday names. Without this, a date formatted in 'bn'
+  // throws the first time a list with a date header is opened.
+  await initializeDateFormatting();
   runApp(const ProviderScope(child: AgentKhataApp()));
 }
 

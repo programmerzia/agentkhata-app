@@ -43,7 +43,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, _, shell) => _Shell(shell),
         branches: [
           StatefulShellBranch(routes: [GoRoute(path: '/', builder: (_, _) => const HomeScreen())]),
-          StatefulShellBranch(routes: [GoRoute(path: '/transactions', builder: (_, _) => const TransactionsScreen())]),
+          StatefulShellBranch(routes: [GoRoute(path: '/transactions', builder: (_, s) => TransactionsScreen(initialWalletId: s.uri.queryParameters['wallet']))]),
           StatefulShellBranch(routes: [GoRoute(path: '/dayclose', builder: (_, _) => const DayCloseScreen())]),
           StatefulShellBranch(routes: [GoRoute(path: '/customers', builder: (_, _) => const CustomersScreen())]),
           StatefulShellBranch(routes: [GoRoute(path: '/reports', builder: (_, _) => const ReportsScreen())]),

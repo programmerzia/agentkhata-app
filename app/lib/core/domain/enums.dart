@@ -94,13 +94,23 @@ extension TxTypeX on TxType {
         TxType.adjustment => 'সমন্বয়',
       };
 
-  /// True when the operator wallet balance goes DOWN for this type.
+  /// True when the entry's own wallet goes DOWN for this type.
+  ///
+  /// Must agree with `Ledger.postingsFor` — it decides the sign every list
+  /// shows and the direction the float advisor counts. It once listed only the
+  /// operator-side outflows, so an expense, a drawing or baki given showed as
+  /// green money IN and made every runway look longer than it was. A test
+  /// (`debitsWallet agrees with the posting rules`) now holds it to the ledger.
   bool get debitsWallet => const {
         TxType.cashIn,
         TxType.sendMoney,
-        TxType.b2bOut,
         TxType.billPay,
+        TxType.b2bOut,
         TxType.recharge,
+        TxType.expense,
+        TxType.drawing,
+        TxType.cashMove,
+        TxType.bakiGiven,
       }.contains(this);
 
   bool get isAutoCapturable => const {

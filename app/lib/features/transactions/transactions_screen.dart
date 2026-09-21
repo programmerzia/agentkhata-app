@@ -9,7 +9,10 @@ import '../../l10n/strings.dart';
 import 'tx_tile.dart';
 
 class TransactionsScreen extends ConsumerStatefulWidget {
-  const TransactionsScreen({super.key});
+  const TransactionsScreen({super.key, this.initialWalletId});
+
+  /// Opened from a wallet card: that wallet's entries, not all of them.
+  final String? initialWalletId;
   @override
   ConsumerState<TransactionsScreen> createState() => _S();
 }
@@ -17,6 +20,20 @@ class TransactionsScreen extends ConsumerStatefulWidget {
 class _S extends ConsumerState<TransactionsScreen> {
   String? walletId;
   String q = '';
+
+  @override
+  void initState() {
+    super.initState();
+    walletId = widget.initialWalletId;
+  }
+
+  @override
+  void didUpdateWidget(covariant TransactionsScreen old) {
+    super.didUpdateWidget(old);
+    // The branch is kept alive by the shell, so a second tap on another
+    // wallet arrives as an update rather than a new screen.
+    if (widget.initialWalletId != old.initialWalletId) setState(() => walletId = widget.initialWalletId);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,7 +50,7 @@ class _S extends ConsumerState<TransactionsScreen> {
 
     final groups = <String, List<Transaction>>{};
     for (final t in txs) {
-      groups.putIfAbsent(DateFormat('EEEE, d MMMM').format(t.occurredAt), () => []).add(t);
+      groups.putIfAbsent(bnDigits(DateFormat('EEEE, d MMMM', code == 'bn' ? 'bn' : 'en').format(t.occurredAt), code), () => []).add(t);
     }
 
     return Scaffold(
@@ -83,7 +100,7 @@ class _S extends ConsumerState<TransactionsScreen> {
           if (t.counterparty != null) _row(s('phone'), bnDigits(t.counterparty!, code)),
           if (t.trxId != null) _row('TrxID', t.trxId!),
           if (t.balanceAfter != null) _row('Balance', Fmt.money(context, code, t.balanceAfter!.value)),
-          _row('Time', bnDigits(DateFormat('d MMM yyyy, h:mm a').format(t.occurredAt), code)),
+          _row('Time', bnDigits(DateFormat('d MMM yyyy, h:mm a', code == 'bn' ? 'bn' : 'en').format(t.occurredAt), code)),
           if (t.note != null) _row(s('note'), t.note!),
           const SizedBox(height: 12),
           Row(children: [

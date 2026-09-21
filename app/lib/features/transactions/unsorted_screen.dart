@@ -58,7 +58,7 @@ class _RawCard extends ConsumerWidget {
           Row(children: [
             if (suspicious) ...[Icon(Icons.warning_amber, color: Theme.of(context).colorScheme.error, size: 18), const SizedBox(width: 6), Text(s('suspicious'), style: TextStyle(color: Theme.of(context).colorScheme.error, fontWeight: FontWeight.w700))],
             const Spacer(),
-            Text('${r.sender}  ${bnDigits(DateFormat('d MMM h:mm a').format(r.receivedAt), code)}', style: Theme.of(context).textTheme.labelSmall),
+            Text('${r.sender}  ${bnDigits(DateFormat('d MMM h:mm a', code == 'bn' ? 'bn' : 'en').format(r.receivedAt), code)}', style: Theme.of(context).textTheme.labelSmall),
           ]),
           const SizedBox(height: 6),
           Text(r.body),

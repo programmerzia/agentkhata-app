@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:home_widget/home_widget.dart';
+import 'package:intl/intl.dart';
 
 import '../../app/providers.dart';
 import '../../app/router.dart';
@@ -28,22 +29,21 @@ import '../../l10n/strings.dart';
 final homeWidgetSyncProvider = Provider<void>((ref) {
   final code = ref.watch(localeProvider);
   final wallets = ref.watch(walletsProvider).value ?? [];
-  final balances = ref.watch(balancesProvider);
   final advice = ref.watch(floatAdviceProvider);
   final today = ref.watch(todaySummaryProvider);
   final unsorted = ref.watch(unsortedProvider).value ?? [];
+  final pending = ref.watch(pendingCountProvider);
+  final money = ref.watch(moneyBucketsProvider);
 
   // Nothing to say before the wallets have loaded, and saying it would blank a
   // widget that currently holds correct numbers.
   if (wallets.isEmpty) return;
 
-  var float = 0;
-  var cash = 0;
-  for (final w in wallets) {
-    final value = balances[w.id]?.value ?? 0;
-    if (w.kind.isMfs) float += value;
-    if (w.kind == WalletKind.cash) cash += value;
-  }
+  // The same buckets as the home screen and the portal: a widget that added
+  // up "float" its own way would disagree with the app it opens.
+  final float = money.eMoney;
+  final cash = money.cash;
+  final inbox = unsorted.length + pending;
 
   final bn = code == 'bn';
   final low = wallets
@@ -58,7 +58,9 @@ final homeWidgetSyncProvider = Provider<void>((ref) {
   final tr = S(code);
   final data = <String, String>{
     'shop': tr('app'),
-    'updated': bnDigits(_clock(DateTime.now()), code),
+    // Date as well as time: the widget only refreshes when the phone captures
+    // or the app runs, and "14:05" on yesterday's numbers passes for today.
+    'updated': bnDigits(_stamp(DateTime.now(), code), code),
     'floatLabel': tr('total_float'),
     'float': Fmt.moneyOf(code, float),
     'cashLabel': tr('cash_in_hand'),
@@ -67,9 +69,9 @@ final homeWidgetSyncProvider = Provider<void>((ref) {
         '${tr('today_commission')} ${Fmt.moneyOf(code, today.commission.value)}  •  ${tr('today_tx')} ${bnDigits('${today.count}', code)}',
     'alert': low.isEmpty ? '' : '${tr('low_float')}: ${low.join(', ')}',
     'addLabel': '+ ${tr('add')}',
-    'inboxLabel': unsorted.isEmpty
-        ? tr('unsorted')
-        : '${tr('unsorted')} (${bnDigits('${unsorted.length}', code)})',
+    // Unsorted messages AND entries waiting for review — the same count as the
+    // inbox badge on the home screen.
+    'inboxLabel': inbox == 0 ? tr('unsorted') : '${tr('unsorted')} (${bnDigits('$inbox', code)})',
   };
 
   // Fire and forget: a launcher that has no widget placed yet, or a platform
@@ -86,8 +88,8 @@ final homeWidgetSyncProvider = Provider<void>((ref) {
   }());
 });
 
-String _clock(DateTime at) =>
-    '${at.hour.toString().padLeft(2, '0')}:${at.minute.toString().padLeft(2, '0')}';
+String _stamp(DateTime at, String code) =>
+    '${DateFormat('d MMM', code == 'bn' ? 'bn' : 'en').format(at)} ${at.hour.toString().padLeft(2, '0')}:${at.minute.toString().padLeft(2, '0')}';
 
 /// Where a tap on the widget lands.
 ///
