@@ -133,3 +133,16 @@ class DayClose {
   final DateTime closedAt;
   Paisa get difference => actual - expected;
 }
+
+extension WalletName on Wallet {
+  /// What the agent calls this account. A stock name ("bKash") becomes the
+  /// operator in their language plus the number's last digits, so two bKash
+  /// accounts never read the same; a name the agent chose is kept as typed.
+  String nameIn(String code) {
+    final stock = label == kind.label || label == kind.labelBn;
+    if (!stock) return label;
+    final base = code == 'bn' ? kind.labelBn : kind.label;
+    final n = accountNumber?.replaceAll(RegExp(r'\D'), '') ?? '';
+    return n.length >= 4 ? '$base ··${n.substring(n.length - 4)}' : base;
+  }
+}

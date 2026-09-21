@@ -52,7 +52,7 @@ final homeWidgetSyncProvider = Provider<void>((ref) {
         final level = advice[w.id]?.level;
         return level == FloatLevel.low || level == FloatLevel.critical;
       })
-      .map((w) => bn ? w.kind.labelBn : w.label)
+      .map((w) => w.nameIn(bn ? 'bn' : 'en'))
       .toList();
 
   final tr = S(code);

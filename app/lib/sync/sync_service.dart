@@ -233,7 +233,8 @@ class SyncService {
     }
     await repo.setCaptures(captures);
     await repo.setMeta('last_device_report', '');
-    await syncNow();
+    // The local join is done; the upload can finish whenever the network does.
+    unawaited(syncNow());
   }
 
   /// Questions the shop asked while adopting: "which of your two bKash numbers

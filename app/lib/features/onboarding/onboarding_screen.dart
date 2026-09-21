@@ -57,6 +57,7 @@ class _S extends ConsumerState<OnboardingScreen> {
   // Joining a shop.
   List<Map<String, dynamic>>? shopWallets;
   final joinCaptures = <String>{};
+  Set<String>? _joinedWith;
   Set<WalletKind> installed = const {};
   bool joining = false;
   String? joinError;
@@ -132,10 +133,18 @@ class _S extends ConsumerState<OnboardingScreen> {
 
   Future<void> _next() async {
     final pageIsJoin = path == _Path.joinShop && step == (_canJoin ? 2 : 1);
-    if (pageIsJoin && shopWallets != null) {
+    // Join once per choice: going back and forward again must not re-join,
+    // but changing which accounts this phone reads should.
+    final choice = {...joinCaptures};
+    final alreadyJoined = _joinedWith != null && _joinedWith!.length == choice.length && _joinedWith!.containsAll(choice);
+    if (pageIsJoin && shopWallets != null && !alreadyJoined) {
       final svc = ref.read(syncServiceProvider);
-      if (svc != null) unawaited(svc.joinShop(wallets: shopWallets!, captures: joinCaptures));
+      if (svc != null) {
+        await svc.joinShop(wallets: shopWallets!, captures: choice);
+        _joinedWith = choice;
+      }
     }
+    if (!mounted) return;
     setState(() => step++);
   }
 
@@ -239,7 +248,7 @@ class _S extends ConsumerState<OnboardingScreen> {
               Text(joinError!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
             ],
           ] else
-            for (final w in shopWallets!.where((w) => w['kind'] != 'cash' && w['kind'] != 'bank'))
+            for (final w in shopWallets!.where((w) => !const {'cash', 'bank', 'recharge'}.contains(w['kind'])))
               () {
                 final kind = WalletKindIndex.ofName(w['kind']);
                 final id = w['id'] as String;

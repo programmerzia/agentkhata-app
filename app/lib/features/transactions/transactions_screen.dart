@@ -66,7 +66,7 @@ class _S extends ConsumerState<TransactionsScreen> {
           child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), children: [
             Padding(padding: const EdgeInsets.symmetric(horizontal: 4), child: ChoiceChip(label: Text(s('all')), selected: walletId == null, onSelected: (_) => setState(() => walletId = null))),
             for (final w in wallets)
-              Padding(padding: const EdgeInsets.symmetric(horizontal: 4), child: ChoiceChip(label: Text(code == 'bn' ? w.kind.labelBn : w.label), selected: walletId == w.id, onSelected: (_) => setState(() => walletId = w.id))),
+              Padding(padding: const EdgeInsets.symmetric(horizontal: 4), child: ChoiceChip(label: Text(w.nameIn(code)), selected: walletId == w.id, onSelected: (_) => setState(() => walletId = w.id))),
           ]),
         ),
         Expanded(

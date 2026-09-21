@@ -63,7 +63,7 @@ class _S extends ConsumerState<ReportsScreen> {
         Text(s('by_wallet'), style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 8),
         for (final w in wallets.where((w) => (r.byWallet[w.id]?.value ?? 0) > 0))
-          ListTile(dense: true, leading: Icon(AppTheme.walletIcon(w.kind), color: AppTheme.walletColor(w.kind)), title: Text(code == 'bn' ? w.kind.labelBn : w.label), trailing: Text(m(r.byWallet[w.id]!.value), style: const TextStyle(fontWeight: FontWeight.w700))),
+          ListTile(dense: true, leading: Icon(AppTheme.walletIcon(w.kind), color: AppTheme.walletColor(w.kind)), title: Text(w.nameIn(code)), trailing: Text(m(r.byWallet[w.id]!.value), style: const TextStyle(fontWeight: FontWeight.w700))),
         const SizedBox(height: 16),
         Text(s('by_type'), style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 8),

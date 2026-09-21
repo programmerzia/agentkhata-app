@@ -129,7 +129,7 @@ class _WalletRow extends ConsumerWidget {
           Icon(AppTheme.walletIcon(w.kind), color: color),
           const SizedBox(width: 10),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(code == 'bn' ? w.kind.labelBn : w.label, style: const TextStyle(fontWeight: FontWeight.w600)),
+            Text(w.nameIn(code), style: const TextStyle(fontWeight: FontWeight.w600)),
             Text('${s('expected')}: ${Fmt.money(context, code, expected.value)}', style: Theme.of(context).textTheme.labelSmall),
           ])),
           SizedBox(
@@ -171,7 +171,7 @@ class _ClosedRow extends ConsumerWidget {
     return ListTile(
       dense: true,
       leading: Icon(w == null ? Icons.help_outline : AppTheme.walletIcon(w.kind), color: w == null ? null : AppTheme.walletColor(w.kind)),
-      title: Text('${showDate ? '${bnDigits(DateFormat('d MMM', code == 'bn' ? 'bn' : 'en').format(c.date), code)} • ' : ''}${w == null ? '?' : (code == 'bn' ? w.kind.labelBn : w.label)}'),
+      title: Text('${showDate ? '${bnDigits(DateFormat('d MMM', code == 'bn' ? 'bn' : 'en').format(c.date), code)} • ' : ''}${w == null ? '?' : (w.nameIn(code))}'),
       subtitle: Text('${Fmt.money(context, code, c.expected.value)} → ${Fmt.money(context, code, c.actual.value)}'),
       trailing: Text(d.value == 0 ? '✓' : '${d.isNegative ? '' : '+'}${Fmt.money(context, code, d.value)}', style: TextStyle(fontWeight: FontWeight.w700, color: d.value == 0 ? Colors.green : (d.isNegative ? Theme.of(context).colorScheme.error : Colors.orange))),
     );

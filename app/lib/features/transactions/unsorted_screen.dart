@@ -62,9 +62,20 @@ class _RawCard extends ConsumerWidget {
           ]),
           const SizedBox(height: 6),
           Text(r.body),
-          if (r.reason != null) Padding(padding: const EdgeInsets.only(top: 4), child: Text(r.reason!, style: Theme.of(context).textTheme.labelSmall?.copyWith(color: Colors.grey))),
+          if (r.reason != null) Padding(padding: const EdgeInsets.only(top: 4), child: Text(reasonText(s.call, r.reason!), style: Theme.of(context).textTheme.labelSmall?.copyWith(color: Colors.grey))),
           Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-            TextButton(onPressed: () => ref.read(repositoryProvider).markRaw(r.id, ParseStatus.ignored), child: Text(s('ignore'))),
+            TextButton(
+              onPressed: () {
+                final repo = ref.read(repositoryProvider);
+                final before = r.parseStatus;
+                repo.markRaw(r.id, ParseStatus.ignored);
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                  content: Text(s('ignored_one')),
+                  action: SnackBarAction(label: s('undo'), onPressed: () => repo.markRaw(r.id, before)),
+                ));
+              },
+              child: Text(s('ignore')),
+            ),
             FilledButton.tonal(onPressed: () => _classify(context, ref), child: Text(s('review'))),
           ]),
         ]),
@@ -96,7 +107,7 @@ class _RawCard extends ConsumerWidget {
             const SizedBox(height: 8),
             DropdownButtonFormField<String>(
               initialValue: walletId,
-              items: [for (final w in wallets) DropdownMenuItem(value: w.id, child: Text(code == 'bn' ? w.kind.labelBn : w.label))],
+              items: [for (final w in wallets) DropdownMenuItem(value: w.id, child: Text(w.nameIn(code)))],
               onChanged: (v) => setSt(() => walletId = v),
               decoration: InputDecoration(labelText: s('wallet')),
             ),
@@ -109,7 +120,8 @@ class _RawCard extends ConsumerWidget {
     final amt = Paisa.tryParse(amountCtl.text);
     if (amt == null) return;
     final repo = ref.read(repositoryProvider);
-    final w = wallets.firstWhere((x) => x.id == walletId);
+    final w = wallets.where((x) => x.id == walletId).firstOrNull;
+    if (w == null) return;
     final engine = CommissionEngine(await repo.commissionRules());
     final tx = Transaction(
       id: newId(),
@@ -128,4 +140,17 @@ class _RawCard extends ConsumerWidget {
     await repo.insertTransaction(tx);
     await repo.markRaw(r.id, ParseStatus.parsed, txId: tx.id);
   }
+}
+
+/// The ingestion reasons are stored in English for the log; the agent reads
+/// them in their own language.
+String reasonText(String Function(String) s, String reason) {
+  if (reason.startsWith('unknown transaction type')) return s('why_unknown_type');
+  if (reason.startsWith('no amount')) return s('why_no_amount');
+  if (reason.startsWith('operator-style message')) return s('why_personal_sender');
+  if (reason.startsWith('sender ')) return s('why_sender_mismatch');
+  if (reason.startsWith('no ') && reason.endsWith('wallet configured')) return s('why_no_wallet');
+  if (reason.startsWith('duplicate') || reason.startsWith('trxId already')) return s('why_duplicate');
+  if (reason.startsWith('could not be processed')) return s('why_failed');
+  return reason;
 }

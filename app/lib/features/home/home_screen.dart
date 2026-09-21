@@ -447,7 +447,7 @@ Future<void> _liftSheet(BuildContext context, WidgetRef ref) async {
             final lift = advice[w.id]?.suggestedLift(hoursOfCover: hours) ?? Paisa.zero;
             return ListTile(
               leading: CircleAvatar(backgroundColor: AppTheme.walletColor(w.kind).withValues(alpha: .15), child: Icon(AppTheme.walletIcon(w.kind), color: AppTheme.walletColor(w.kind))),
-              title: Text(code == 'bn' ? w.kind.labelBn : w.label),
+              title: Text(w.nameIn(code)),
               subtitle: Text(lift.value > 0 ? Fmt.money(sheet, code, lift.value) : s('lift_none')),
               trailing: const Icon(Icons.chat_outlined, color: Color(0xFF25D366)),
               onTap: () async {
@@ -474,7 +474,7 @@ Future<void> _askDistributor(BuildContext context, WidgetRef ref, Wallet wallet,
     return;
   }
   final message = s('topup_message')
-      .replaceAll('{wallet}', code == 'bn' ? wallet.kind.labelBn : wallet.label)
+      .replaceAll('{wallet}', wallet.nameIn(code))
       .replaceAll('{amount}', lift.value > 0 ? Fmt.money(context, code, lift.value) : s('lift_amount_open'));
   final digits = number.replaceAll(RegExp(r'\D'), '');
   final intl = digits.startsWith('880') ? digits : '880${digits.replaceFirst(RegExp(r'^0'), '')}';
@@ -526,7 +526,7 @@ class _WalletCard extends ConsumerWidget {
                   child: Icon(AppTheme.walletIcon(w.kind), color: Colors.white, size: 18),
                 ),
                 const SizedBox(width: 10),
-                Expanded(child: Text(code == 'bn' ? w.kind.labelBn : w.label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700))),
+                Expanded(child: Text(w.nameIn(code), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700))),
                 if (warn)
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),

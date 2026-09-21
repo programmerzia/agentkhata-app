@@ -93,7 +93,7 @@ class _S extends ConsumerState<AddTransactionScreen> {
           DropdownButtonFormField<String>(
             initialValue: walletId,
             decoration: InputDecoration(labelText: s('wallet')),
-            items: [for (final w in wallets) DropdownMenuItem(value: w.id, child: Text(code == 'bn' ? w.kind.labelBn : w.label))],
+            items: [for (final w in wallets) DropdownMenuItem(value: w.id, child: Text(w.nameIn(code)))],
             onChanged: (v) => setState(() => walletId = v),
           ),
         if (needsCounterWallet) ...[
@@ -101,7 +101,7 @@ class _S extends ConsumerState<AddTransactionScreen> {
           DropdownButtonFormField<String>(
             initialValue: counterWalletId,
             decoration: InputDecoration(labelText: '${s('wallet')} 2'),
-            items: [for (final w in wallets) DropdownMenuItem(value: w.id, child: Text(code == 'bn' ? w.kind.labelBn : w.label))],
+            items: [for (final w in wallets) DropdownMenuItem(value: w.id, child: Text(w.nameIn(code)))],
             onChanged: (v) => setState(() => counterWalletId = v),
           ),
         ],
@@ -140,11 +140,21 @@ class _S extends ConsumerState<AddTransactionScreen> {
 
   Future<void> _save() async {
     final amt = Paisa.tryParse(amount.text);
-    if (amt == null || amt.value <= 0 || walletId == null) return;
-    if (needsCustomer && customerId == null) return;
-    final repo = ref.read(repositoryProvider);
     final wallets = ref.read(walletsProvider).value ?? [];
-    final w = wallets.firstWhere((x) => x.id == walletId);
+    final w = wallets.where((x) => x.id == walletId).firstOrNull;
+    final problem = amt == null || amt.value <= 0
+        ? 'enter_amount'
+        : w == null
+            ? 'choose_wallet'
+            : needsCustomer && customerId == null
+                ? 'choose_customer'
+                : null;
+    if (problem != null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(ref.s(problem))));
+      return;
+    }
+    if (amt == null || w == null) return; // already refused above; promotes
+    final repo = ref.read(repositoryProvider);
     final engine = CommissionEngine(await repo.commissionRules());
     final tx = Transaction(
       id: newId(),

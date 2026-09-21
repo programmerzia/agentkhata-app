@@ -17,7 +17,8 @@ class CustomersScreen extends ConsumerWidget {
     final code = ref.watch(localeProvider);
     final customers = ref.watch(customersProvider).value ?? [];
     final due = ref.watch(receivablesProvider);
-    final totalDue = due.values.fold<int>(0, (a, b) => a + b.value);
+    // Money owed to the shop only; a customer in credit is not a negative debt.
+    final totalDue = due.values.fold<int>(0, (a, b) => b.value > 0 ? a + b.value : a);
     final sorted = [...customers]..sort((a, b) => (due[b.id]?.value ?? 0).compareTo(due[a.id]?.value ?? 0));
 
     return Scaffold(

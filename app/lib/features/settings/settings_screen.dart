@@ -107,7 +107,7 @@ class SettingsScreen extends ConsumerWidget {
         for (final w in wallets)
           SwitchListTile(
             secondary: Icon(AppTheme.walletIcon(w.kind), color: AppTheme.walletColor(w.kind)),
-            title: Text(code == 'bn' ? w.kind.labelBn : w.label),
+            title: Text(w.nameIn(code)),
             subtitle: w.accountNumber == null ? null : Text(bnDigits(w.accountNumber!, code)),
             value: w.isActive,
             onChanged: w.kind == WalletKind.cash ? null : (v) => ref.read(repositoryProvider).setWalletActive(w.id, v),
