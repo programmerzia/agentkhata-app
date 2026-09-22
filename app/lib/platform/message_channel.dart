@@ -62,9 +62,10 @@ class PhoneHealth {
 }
 
 class PhoneIdentity {
-  const PhoneIdentity({required this.model, required this.appVersion});
+  const PhoneIdentity({required this.model, required this.appVersion, this.versionCode = 0});
   final String model;
   final String appVersion;
+  final int versionCode;
 }
 
 /// Bridge to the Kotlin side: the notification listener, the SMS receiver,
@@ -136,7 +137,7 @@ class MessageChannel {
     final raw = await _call<Map<dynamic, dynamic>>('device');
     if (raw == null) return null;
     final m = Map<String, dynamic>.from(raw);
-    return PhoneIdentity(model: m['model'] as String? ?? 'Android', appVersion: m['appVersion'] as String? ?? '?');
+    return PhoneIdentity(model: m['model'] as String? ?? 'Android', appVersion: m['appVersion'] as String? ?? '?', versionCode: (m['versionCode'] as num?)?.toInt() ?? 0);
   }
 
   /// Package names of the operator apps installed on this phone.

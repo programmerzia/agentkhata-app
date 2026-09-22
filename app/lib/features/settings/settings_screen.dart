@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../receipts/receipt.dart';
+import '../update/update_check.dart';
 
 import '../../app/providers.dart';
 import '../../app/theme.dart';
@@ -149,7 +150,7 @@ class SettingsScreen extends ConsumerWidget {
           },
         ),
         const SizedBox(height: 32),
-        Center(child: Text('AgentKhata v0.1.0', style: Theme.of(context).textTheme.labelSmall)),
+        const AboutVersionTile(),
         const SizedBox(height: 16),
       ]),
     );

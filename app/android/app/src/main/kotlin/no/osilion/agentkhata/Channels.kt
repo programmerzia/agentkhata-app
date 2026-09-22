@@ -133,7 +133,9 @@ object Channels {
         val info = context.packageManager.getPackageInfo(context.packageName, 0)
         val brand = Build.MANUFACTURER.replaceFirstChar { it.uppercase() }
         val model = if (Build.MODEL.startsWith(brand, ignoreCase = true)) Build.MODEL else "$brand ${Build.MODEL}"
-        return mapOf("model" to model, "appVersion" to (info.versionName ?: "?"))
+        @Suppress("DEPRECATION")
+        val code = if (Build.VERSION.SDK_INT >= 28) info.longVersionCode else info.versionCode.toLong()
+        return mapOf("model" to model, "appVersion" to (info.versionName ?: "?"), "versionCode" to code)
     }
 
     /**

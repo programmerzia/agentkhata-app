@@ -11,6 +11,7 @@ import '../../app/providers.dart';
 import '../../app/theme.dart';
 import '../../core/core.dart';
 import '../../l10n/strings.dart';
+import '../update/update_check.dart';
 import '../../sync/sync_providers.dart';
 import '../../sync/sync_service.dart';
 import '../settings/topup_tile.dart';
@@ -75,6 +76,7 @@ class HomeScreen extends ConsumerWidget {
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 110),
             sliver: SliverList.list(children: [
+              const UpdateBanner(),
               const _Hero(),
               if (health != null && !health.capturing) ...[
                 const SizedBox(height: 12),
