@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../l10n/strings.dart';
 import '../../platform/message_channel.dart';
 import '../../sync/api_client.dart';
+import '../../sync/device_session.dart';
 import '../../app/providers.dart';
 import '../../sync/sync_providers.dart';
 
@@ -93,14 +94,21 @@ class _ConnectTileState extends ConsumerState<_ConnectTile> {
       // The portal's phones page lists devices by this name; "Tecno Spark 20"
       // tells an owner which handset it is, "Android phone" three times does not.
       final identity = await MessageChannel.identity();
-      final paired = await ref.read(deviceSessionProvider).pair(deviceName: identity?.model ?? 'Android phone');
-      if (!paired) {
-        setState(() => error = ref.s('connect_failed'));
+      final session = ref.read(deviceSessionProvider);
+      final strings = ref.s;
+      final failed = await session.pair(deviceName: identity?.model ?? 'Android phone');
+      if (!mounted) return;
+      if (failed != null) {
+        setState(() => error = strings(switch (failed) {
+              PairFailure.cancelled => 'connect_cancelled',
+              PairFailure.noCode => 'connect_failed',
+              PairFailure.exchange => 'connect_exchange_failed',
+            }));
         return;
       }
       ref.invalidate(deviceTokenProvider);
     } catch (_) {
-      setState(() => error = ref.s('connect_failed'));
+      if (mounted) setState(() => error = ref.s('connect_failed'));
     } finally {
       if (mounted) setState(() => busy = false);
     }

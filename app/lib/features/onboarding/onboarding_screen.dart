@@ -271,8 +271,8 @@ class _S extends ConsumerState<OnboardingScreen> {
     });
     try {
       final identity = await MessageChannel.identity();
-      final paired = await ref.read(deviceSessionProvider).pair(deviceName: identity?.model ?? 'Android phone');
-      if (!paired) throw StateError('not paired');
+      final failed = await ref.read(deviceSessionProvider).pair(deviceName: identity?.model ?? 'Android phone');
+      if (failed != null) throw StateError('not paired: ${failed.name}');
       ref.invalidate(deviceTokenProvider);
       await ref.read(deviceTokenProvider.future);
       final svc = ref.read(syncServiceProvider);

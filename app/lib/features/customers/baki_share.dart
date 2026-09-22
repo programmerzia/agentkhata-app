@@ -120,8 +120,7 @@ class StatementCard extends ConsumerWidget {
       padding: const EdgeInsets.fromLTRB(18, 20, 18, 16),
       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(6), boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 12, offset: Offset(0, 4))]),
       child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Text(header?.name ?? '', textAlign: TextAlign.center, style: st(17, w: FontWeight.w800)),
-        if (header?.phone?.isNotEmpty == true) Text(bnDigits(header!.phone!, code), textAlign: TextAlign.center, style: st(11, c: faint)),
+        ShopHeaderBlock(header: header, code: code),
         const SizedBox(height: 4),
         Text(s('statement').toUpperCase(), textAlign: TextAlign.center, style: st(10, c: faint).copyWith(letterSpacing: code == 'bn' ? 0 : 2)),
         const Divider(color: Colors.black26, height: 22),

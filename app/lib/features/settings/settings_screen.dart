@@ -47,7 +47,10 @@ class _LockTile extends ConsumerWidget {
       onChanged: (value) async {
         /* Prove it works BEFORE turning it on. A lock enabled on a phone whose
            reader is broken is an agent locked out of their own books. */
-        if (value && !await AppLock.authenticate(s('lock_prompt'))) return;
+        if (value && !await AppLock.authenticate(s('lock_prompt'))) {
+          if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s('lock_failed'))));
+          return;
+        }
         await AppLock.setEnabled(value);
         ref.invalidate(lockEnabledProvider);
       },
@@ -240,7 +243,7 @@ class SettingsScreen extends ConsumerWidget {
   }
 }
 
-/// The name and number printed on every receipt and statement.
+/// The shop details printed on every receipt and statement.
 class ReceiptHeaderTile extends ConsumerWidget {
   const ReceiptHeaderTile({super.key});
 
@@ -248,34 +251,80 @@ class ReceiptHeaderTile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final s = ref.s;
     final h = ref.watch(receiptHeaderProvider).value;
+    final details = [h?.owner, h?.address, h?.phone].whereType<String>().join(' • ');
     return ListTile(
       leading: const Icon(Icons.storefront_outlined),
       title: Text(h?.name ?? ''),
-      subtitle: Text(h?.phone?.isNotEmpty == true ? h!.phone! : s('receipt_header_sub')),
+      subtitle: Text(details.isEmpty ? s('receipt_header_sub') : details),
       trailing: const Icon(Icons.edit_outlined),
-      onTap: () async {
-        final name = TextEditingController(text: h?.name);
-        final phone = TextEditingController(text: h?.phone);
-        final ok = await showDialog<bool>(
-          context: context,
-          builder: (d) => AlertDialog(
-            title: Text(s('receipt_header')),
-            content: Column(mainAxisSize: MainAxisSize.min, children: [
-              TextField(controller: name, decoration: InputDecoration(labelText: s('shop_name'))),
-              TextField(controller: phone, keyboardType: TextInputType.phone, decoration: InputDecoration(labelText: s('phone'))),
-            ]),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(d, false), child: Text(s('cancel'))),
-              FilledButton(onPressed: () => Navigator.pop(d, true), child: Text(s('save'))),
-            ],
+      onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ReceiptHeaderScreen())),
+    );
+  }
+}
+
+class ReceiptHeaderScreen extends ConsumerStatefulWidget {
+  const ReceiptHeaderScreen({super.key});
+
+  @override
+  ConsumerState<ReceiptHeaderScreen> createState() => _ReceiptHeaderScreenState();
+}
+
+class _ReceiptHeaderScreenState extends ConsumerState<ReceiptHeaderScreen> {
+  final fields = <String, TextEditingController>{
+    shopNameKey: TextEditingController(),
+    shopOwnerKey: TextEditingController(),
+    shopAddressKey: TextEditingController(),
+    shopPhoneKey: TextEditingController(),
+    shopFooterKey: TextEditingController(),
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    SharedPreferences.getInstance().then((p) {
+      if (!mounted) return;
+      setState(() {
+        for (final e in fields.entries) {
+          e.value.text = p.getString(e.key) ?? '';
+        }
+      });
+    });
+  }
+
+  Future<void> _save() async {
+    final p = await SharedPreferences.getInstance();
+    for (final e in fields.entries) {
+      await p.setString(e.key, e.value.text.trim());
+    }
+    ref.invalidate(receiptHeaderProvider);
+    if (mounted) Navigator.pop(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = ref.s;
+    Widget field(String key, String label, {String? hint, TextInputType? type, int lines = 1}) => Padding(
+          padding: const EdgeInsets.only(bottom: 14),
+          child: TextField(
+            controller: fields[key],
+            keyboardType: type,
+            maxLines: lines,
+            decoration: InputDecoration(labelText: label, hintText: hint, border: const OutlineInputBorder()),
           ),
         );
-        if (ok != true) return;
-        final p = await SharedPreferences.getInstance();
-        await p.setString(shopNameKey, name.text.trim());
-        await p.setString(shopPhoneKey, phone.text.trim());
-        ref.invalidate(receiptHeaderProvider);
-      },
+    return Scaffold(
+      appBar: AppBar(title: Text(s('receipt_header'))),
+      body: ListView(padding: const EdgeInsets.all(20), children: [
+        Text(s('receipt_header_sub'), style: Theme.of(context).textTheme.bodyMedium),
+        const SizedBox(height: 16),
+        field(shopNameKey, s('shop_name'), hint: s('shop_name_hint')),
+        field(shopOwnerKey, s('shop_owner')),
+        field(shopAddressKey, s('shop_address'), hint: s('shop_address_hint'), lines: 2),
+        field(shopPhoneKey, s('phone'), type: TextInputType.phone),
+        field(shopFooterKey, s('receipt_footer'), hint: s('receipt_thanks')),
+        const SizedBox(height: 8),
+        FilledButton(onPressed: _save, style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)), child: Text(s('save'))),
+      ]),
     );
   }
 }

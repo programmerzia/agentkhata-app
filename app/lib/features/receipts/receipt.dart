@@ -18,17 +18,58 @@ import '../../l10n/strings.dart';
 
 /// The name printed at the top of receipts and statements.
 ///
-/// Set in Settings; until then the counter's name from the shop, and until
-/// that, the app's own name.
+/// Set in Settings; until then the business's name from the portal, and
+/// until that, the app's own name.
 const shopNameKey = 'agentkhata.receipt_shop_name';
 const shopPhoneKey = 'agentkhata.receipt_shop_phone';
+const shopOwnerKey = 'agentkhata.receipt_shop_owner';
+const shopAddressKey = 'agentkhata.receipt_shop_address';
+const shopFooterKey = 'agentkhata.receipt_shop_footer';
 
-final receiptHeaderProvider = FutureProvider<({String name, String? phone})>((ref) async {
+/// What sits at the top and bottom of every receipt and statement.
+class ReceiptHeader {
+  const ReceiptHeader({required this.name, this.owner, this.address, this.phone, this.footer});
+  final String name;
+  final String? owner;
+  final String? address;
+  final String? phone;
+  final String? footer;
+}
+
+final receiptHeaderProvider = FutureProvider<ReceiptHeader>((ref) async {
   final p = await SharedPreferences.getInstance();
-  final name = p.getString(shopNameKey);
-  final fallback = p.getString('agentkhata.counter_name');
-  return (name: (name?.isNotEmpty ?? false) ? name! : (fallback ?? 'এজেন্ট খাতা'), phone: p.getString(shopPhoneKey));
+  String? get(String k) {
+    final v = p.getString(k)?.trim();
+    return (v == null || v.isEmpty) ? null : v;
+  }
+
+  return ReceiptHeader(
+    name: get(shopNameKey) ?? get('agentkhata.shop_name_remote') ?? 'এজেন্ট খাতা',
+    owner: get(shopOwnerKey),
+    address: get(shopAddressKey),
+    phone: get(shopPhoneKey),
+    footer: get(shopFooterKey),
+  );
 });
+
+/// The shop block printed at the top of a receipt or statement.
+class ShopHeaderBlock extends StatelessWidget {
+  const ShopHeaderBlock({super.key, required this.header, required this.code});
+  final ReceiptHeader? header;
+  final String code;
+
+  @override
+  Widget build(BuildContext context) {
+    final h = header;
+    const faint = TextStyle(color: Colors.black54, fontSize: 11.5);
+    return Column(mainAxisSize: MainAxisSize.min, children: [
+      Text(h?.name ?? '', textAlign: TextAlign.center, style: const TextStyle(color: Colors.black87, fontSize: 18, fontWeight: FontWeight.w800)),
+      if (h?.owner != null) Text(h!.owner!, textAlign: TextAlign.center, style: faint.copyWith(fontWeight: FontWeight.w600, color: Colors.black87)),
+      if (h?.address != null) Text(h!.address!, textAlign: TextAlign.center, style: faint),
+      if (h?.phone != null) Text('☎ ${bnDigits(h!.phone!, code)}', textAlign: TextAlign.center, style: faint),
+    ]);
+  }
+}
 
 /// A customer's number on a receipt: enough to recognise, not enough to copy.
 String maskNumber(String n) {
@@ -205,8 +246,7 @@ class ReceiptCard extends ConsumerWidget {
       child: DefaultTextStyle(
         style: const TextStyle(color: ink),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Text(header?.name ?? '', textAlign: TextAlign.center, style: const TextStyle(color: ink, fontSize: 18, fontWeight: FontWeight.w800)),
-          if (header?.phone != null && header!.phone!.isNotEmpty) Text(bnDigits(header.phone!, code), style: const TextStyle(color: faint, fontSize: 12)),
+          ShopHeaderBlock(header: header, code: code),
           const SizedBox(height: 4),
           // Letter-spacing tears Bangla conjuncts apart, so only English gets it.
           Text(s('receipt').toUpperCase(), style: TextStyle(color: faint, fontSize: 11, letterSpacing: code == 'bn' ? 0 : 2)),
@@ -223,7 +263,7 @@ class ReceiptCard extends ConsumerWidget {
           if (t.fee.value != 0) row(s('fees'), money(t.fee.value)),
           if (t.note != null && t.note!.isNotEmpty) row(s('note'), t.note!),
           rule(),
-          Text(s('receipt_thanks'), textAlign: TextAlign.center, style: const TextStyle(color: faint, fontSize: 12)),
+          Text(header?.footer ?? s('receipt_thanks'), textAlign: TextAlign.center, style: const TextStyle(color: faint, fontSize: 12)),
         ]),
       ),
     );

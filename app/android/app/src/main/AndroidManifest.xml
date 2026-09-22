@@ -44,7 +44,17 @@
               custom scheme is not exclusive on Android: another installed app
               can claim it too. See DeviceSession.pair.
             -->
-            <intent-filter>
+        </activity>
+        <!--
+          The redirect must land on flutter_web_auth_2's own activity: it is
+          what completes the pending authenticate() call. Declared on
+          MainActivity instead, the browser came back to the app and the
+          pairing future never saw the code, so every connect "failed".
+        -->
+        <activity
+            android:name="com.linusu.flutter_web_auth_2.CallbackActivity"
+            android:exported="true">
+            <intent-filter android:label="flutter_web_auth_2">
                 <action android:name="android.intent.action.VIEW"/>
                 <category android:name="android.intent.category.DEFAULT"/>
                 <category android:name="android.intent.category.BROWSABLE"/>

@@ -53,8 +53,8 @@ class DeviceSession {
     await _storage.delete(key: _tenantKey);
   }
 
-  /// Run the pairing round trip. Returns false if the person cancelled.
-  Future<bool> pair({required String deviceName}) async {
+  /// Run the pairing round trip. Null on success, else why it did not work.
+  Future<PairFailure?> pair({required String deviceName}) async {
     final url = Uri.parse('${ApiConfig.baseUrl}/pair')
         .replace(queryParameters: {'name': deviceName}).toString();
 
@@ -66,7 +66,7 @@ class DeviceSession {
       );
     } catch (_) {
       // The person closed the tab, or the system had no browser to open.
-      return false;
+      return PairFailure.cancelled;
     }
 
     /*
@@ -77,12 +77,14 @@ class DeviceSession {
      */
     final fragment = Uri.parse(result).fragment;
     final code = Uri.splitQueryString(fragment)['code'];
-    if (code == null || code.isEmpty) return false;
+    if (code == null || code.isEmpty) return PairFailure.noCode;
 
     final exchanged = await ApiClient.exchangePairingCode(code);
-    if (exchanged == null) return false;
+    if (exchanged == null) return PairFailure.exchange;
 
     await save(token: exchanged.token, tenantId: exchanged.tenantId);
-    return true;
+    return null;
   }
 }
+
+enum PairFailure { cancelled, noCode, exchange }

@@ -52,7 +52,10 @@ class _CaptureChecklistState extends ConsumerState<CaptureChecklist> {
     final maker = (health?.manufacturer ?? '').toLowerCase();
     final needsAutostart = _autostartMakers.any(maker.contains);
 
+    final blocked = (health?.restrictedSettings ?? false) && !((health?.notificationAccess ?? false) && (health?.smsAccess ?? false));
+
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      if (blocked) _RestrictedGuide(onOpen: MessageChannel.openAppDetails),
       _CheckRow(
         icon: Icons.notifications_active_outlined,
         title: s('check_notifications'),
@@ -61,6 +64,9 @@ class _CaptureChecklistState extends ConsumerState<CaptureChecklist> {
         action: s('check_fix'),
         done: s('check_ok'),
         dense: widget.dense,
+        // While Android is blocking it, this is still the first step: Android
+        // only adds "Allow restricted settings" to App info after the person
+        // has been refused once.
         onFix: MessageChannel.openNotificationAccessSettings,
       ),
       _CheckRow(
@@ -107,7 +113,11 @@ class _CaptureChecklistState extends ConsumerState<CaptureChecklist> {
         done: s('check_ok'),
         dense: widget.dense,
         onFix: () async {
-          await Permission.sms.request();
+          final status = await Permission.sms.request();
+          // Once refused twice Android stops showing the dialog and the
+          // request returns at once: that is the "tap does nothing". Send the
+          // person to the permission screen instead.
+          if (!status.isGranted) await openAppSettings();
           ref.invalidate(phoneHealthProvider);
         },
       ),
@@ -168,6 +178,37 @@ class _CheckRow extends StatelessWidget {
                   child: Text(done, style: TextStyle(color: tone, fontWeight: FontWeight.w600)),
                 )
               : FilledButton.tonal(onPressed: onFix, child: Text(action)),
+        ]),
+      ),
+    );
+  }
+}
+
+/// Shown above the checklist while Android is blocking the two capture
+/// permissions for a file-installed app.
+class _RestrictedGuide extends ConsumerWidget {
+  const _RestrictedGuide({required this.onOpen});
+  final Future<void> Function() onOpen;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final s = ref.s;
+    final scheme = Theme.of(context).colorScheme;
+    return Card(
+      color: scheme.errorContainer,
+      margin: const EdgeInsets.only(bottom: 10),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Icon(Icons.shield_outlined, color: scheme.onErrorContainer),
+            const SizedBox(width: 8),
+            Expanded(child: Text(s('restricted_title'), style: TextStyle(fontWeight: FontWeight.w700, color: scheme.onErrorContainer))),
+          ]),
+          const SizedBox(height: 8),
+          Text(s('restricted_steps'), style: TextStyle(color: scheme.onErrorContainer)),
+          const SizedBox(height: 10),
+          FilledButton.icon(onPressed: onOpen, icon: const Icon(Icons.open_in_new), label: Text(s('restricted_open'))),
         ]),
       ),
     );

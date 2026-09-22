@@ -36,6 +36,7 @@ class PhoneHealth {
     required this.queued,
     this.lastCaptureAt,
     this.manufacturer,
+    this.restrictedSettings = false,
   });
 
   final bool notificationAccess;
@@ -44,6 +45,10 @@ class PhoneHealth {
   final int queued;
   final DateTime? lastCaptureAt;
   final String? manufacturer;
+
+  /// Android is greying out notification access and SMS because the app was
+  /// installed from a file; the person must allow restricted settings first.
+  final bool restrictedSettings;
 
   /// Capture works if at least one door is open, and the phone will not kill it.
   bool get capturing => (notificationAccess || smsAccess) && batteryUnrestricted;
@@ -78,6 +83,7 @@ class MessageChannel {
       (await _call<bool>('isNotificationAccessGranted')) ?? false;
 
   static Future<void> openNotificationAccessSettings() => _call<void>('openNotificationAccessSettings');
+  static Future<void> openAppDetails() => _call<void>('openAppDetails');
 
   static Future<List<QueuedMessage>> peekQueue() async {
     final list = await _call<List<dynamic>>('peekQueue') ?? const [];
@@ -122,6 +128,7 @@ class MessageChannel {
       queued: (m['queued'] as num?)?.toInt() ?? 0,
       lastCaptureAt: last == null ? null : DateTime.fromMillisecondsSinceEpoch(last),
       manufacturer: m['manufacturer'] as String?,
+      restrictedSettings: m['restrictedSettings'] as bool? ?? false,
     );
   }
 

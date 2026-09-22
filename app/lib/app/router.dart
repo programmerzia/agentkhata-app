@@ -73,7 +73,7 @@ class _Shell extends ConsumerWidget {
             leading: Padding(padding: const EdgeInsets.symmetric(vertical: 16), child: Column(children: [const Icon(Icons.account_balance_wallet, size: 32), const SizedBox(height: 4), Text(s('app'), style: Theme.of(context).textTheme.labelLarge)])),
             destinations: [
               NavigationRailDestination(icon: const Icon(Icons.dashboard_outlined), selectedIcon: const Icon(Icons.dashboard), label: Text(s('home'))),
-              NavigationRailDestination(icon: const Icon(Icons.receipt_long_outlined), selectedIcon: const Icon(Icons.receipt_long), label: Text(s('transactions'))),
+              NavigationRailDestination(icon: const Icon(Icons.receipt_long_outlined), selectedIcon: const Icon(Icons.receipt_long), label: Text(s('nav_entries'))),
               NavigationRailDestination(icon: const Icon(Icons.lock_clock_outlined), selectedIcon: const Icon(Icons.lock_clock), label: Text(s('dayclose'))),
               NavigationRailDestination(icon: const Icon(Icons.people_outline), selectedIcon: const Icon(Icons.people), label: Text(s('customers'))),
               NavigationRailDestination(icon: const Icon(Icons.bar_chart_outlined), selectedIcon: const Icon(Icons.bar_chart), label: Text(s('reports'))),
@@ -92,7 +92,7 @@ class _Shell extends ConsumerWidget {
         onDestinationSelected: (i) => shell.goBranch(i, initialLocation: i == shell.currentIndex),
         destinations: [
           NavigationDestination(icon: const Icon(Icons.dashboard_outlined), selectedIcon: const Icon(Icons.dashboard), label: s('home')),
-          NavigationDestination(icon: const Icon(Icons.receipt_long_outlined), selectedIcon: const Icon(Icons.receipt_long), label: s('transactions')),
+          NavigationDestination(icon: const Icon(Icons.receipt_long_outlined), selectedIcon: const Icon(Icons.receipt_long), label: s('nav_entries')),
           NavigationDestination(icon: const Icon(Icons.lock_clock_outlined), selectedIcon: const Icon(Icons.lock_clock), label: s('dayclose')),
           NavigationDestination(icon: const Icon(Icons.people_outline), selectedIcon: const Icon(Icons.people), label: s('customers')),
           NavigationDestination(icon: const Icon(Icons.bar_chart_outlined), selectedIcon: const Icon(Icons.bar_chart), label: s('reports')),

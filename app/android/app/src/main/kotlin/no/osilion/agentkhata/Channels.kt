@@ -59,6 +59,13 @@ object Channels {
                     "installedOperatorApps" -> result.success(installedOperatorApps(app))
                     "requestBatteryUnrestricted" -> result.success(requestBatteryUnrestricted(app))
                     "openAutostartSettings" -> result.success(openAutostartSettings(app))
+                    "openAppDetails" -> {
+                        app.startActivity(
+                            android.content.Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, android.net.Uri.fromParts("package", app.packageName, null))
+                                .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
+                        )
+                        result.success(null)
+                    }
                     else -> result.notImplemented()
                 }
             } catch (error: Throwable) {
@@ -87,7 +94,40 @@ object Channels {
         "lastCaptureAt" to MessageQueue.lastCaptureAt(context).takeIf { it > 0 },
         "sdk" to Build.VERSION.SDK_INT,
         "manufacturer" to Build.MANUFACTURER,
+        "restrictedSettings" to restrictedSettingsBlocked(context),
     )
+
+    /**
+     * Android 13+ greys out notification access and SMS for an app installed
+     * from a file rather than a store, until the person taps "Allow restricted
+     * settings" in App info. There is no API to ask for it; the app can only
+     * notice it and walk the person there. The app-op reads back what they
+     * chose, so the guide disappears once it is done.
+     */
+    private val STORES = setOf(
+        "com.android.vending", "com.sec.android.app.samsungapps", "com.xiaomi.market", "com.xiaomi.mipicks",
+        "com.huawei.appmarket", "com.heytap.market", "com.oppo.market", "com.vivo.appstore", "com.transsion.phoenix",
+    )
+
+    private fun restrictedSettingsBlocked(context: Context): Boolean {
+        if (Build.VERSION.SDK_INT < 33) return false
+        val installer = try {
+            context.packageManager.getInstallSourceInfo(context.packageName).installingPackageName
+        } catch (_: Throwable) { null }
+        // Stores are trusted; a cable install (adb) has no installer and is
+        // not restricted either. Only a file opened from a browser, chat app
+        // or file manager goes through the package installer and gets blocked.
+        if (installer == null || installer in STORES) return false
+        return try {
+            val ops = context.getSystemService(Context.APP_OPS_SERVICE) as android.app.AppOpsManager
+            val mode = ops.unsafeCheckOpNoThrow("android:access_restricted_settings", context.applicationInfo.uid, context.packageName)
+            mode != android.app.AppOpsManager.MODE_ALLOWED
+        } catch (_: Throwable) {
+            // The op name is not public API; if a phone lacks it, assume the
+            // block is there only while notification access is still off.
+            !notificationAccess(context)
+        }
+    }
 
     private fun device(context: Context): Map<String, Any?> {
         val info = context.packageManager.getPackageInfo(context.packageName, 0)

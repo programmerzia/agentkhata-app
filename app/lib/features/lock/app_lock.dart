@@ -85,6 +85,13 @@ class AppLockGate extends ConsumerStatefulWidget {
 class _AppLockGateState extends ConsumerState<AppLockGate> with WidgetsBindingObserver {
   bool _unlocked = false;
   bool _prompting = false;
+  DateTime? _leftAt;
+
+  /// Away for less than this and the app stays open. Signing in through the
+  /// browser, the share sheet and Android's permission screens all take the
+  /// agent out of the app for a few seconds; locking on each of those made
+  /// every one of them end at a PIN prompt.
+  static const _grace = Duration(seconds: 30);
 
   @override
   void initState() {
@@ -101,7 +108,14 @@ class _AppLockGateState extends ConsumerState<AppLockGate> with WidgetsBindingOb
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused) {
-      setState(() => _unlocked = false);
+      _leftAt ??= DateTime.now();
+    } else if (state == AppLifecycleState.resumed) {
+      final left = _leftAt;
+      _leftAt = null;
+      // The biometric prompt itself pauses the app; that is not "put down".
+      if (left != null && !_prompting && DateTime.now().difference(left) >= _grace) {
+        setState(() => _unlocked = false);
+      }
     }
   }
 
@@ -118,7 +132,16 @@ class _AppLockGateState extends ConsumerState<AppLockGate> with WidgetsBindingOb
   @override
   Widget build(BuildContext context) {
     final enabled = ref.watch(lockEnabledProvider).value ?? false;
-    if (!enabled || _unlocked) return widget.child;
+    final locked = enabled && !_unlocked;
+    // The app stays mounted under the shutter: work in flight (a sign-in, a
+    // sync, a half-typed entry) must survive the phone being locked.
+    return Stack(children: [
+      widget.child,
+      if (locked) Positioned.fill(child: _shutter(context)),
+    ]);
+  }
+
+  Widget _shutter(BuildContext context) {
 
     final s = ref.s;
     // Prompt as soon as the shutter is shown, so the common case is one tap on
