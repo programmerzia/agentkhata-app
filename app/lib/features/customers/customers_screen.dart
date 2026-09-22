@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../app/providers.dart';
 import '../../core/core.dart';
 import '../../l10n/strings.dart';
+import 'baki_share.dart';
 
 /// Baki (customer credit) ledger with free WhatsApp / SMS reminders.
 class CustomersScreen extends ConsumerWidget {
@@ -30,9 +30,22 @@ class CustomersScreen extends ConsumerWidget {
           ? Center(child: Text(s('add_customer')))
           : ListView.builder(
               padding: const EdgeInsets.only(bottom: 88),
-              itemCount: sorted.length,
+              itemCount: sorted.length + 1,
               itemBuilder: (_, i) {
-                final c = sorted[i];
+                if (i == 0) {
+                  final reachable = sorted.where((c) => (due[c.id]?.value ?? 0) > 0 && (c.phone?.isNotEmpty ?? false)).length;
+                  if (reachable == 0) return const SizedBox.shrink();
+                  return Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                    child: FilledButton.tonalIcon(
+                      onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const RemindersScreen())),
+                      icon: const Icon(Icons.campaign_outlined),
+                      label: Text('${s('remind_all')} (${bnDigits('$reachable', code)})'),
+                      style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+                    ),
+                  );
+                }
+                final c = sorted[i - 1];
                 final d = due[c.id] ?? Paisa.zero;
                 return ListTile(
                   leading: CircleAvatar(child: Text(c.name.isEmpty ? '?' : c.name[0].toUpperCase())),
@@ -56,15 +69,21 @@ class CustomersScreen extends ConsumerWidget {
         ListTile(title: Text(c.name, style: Theme.of(context).textTheme.titleLarge), subtitle: Text('${s('due')}: ${Fmt.money(context, code, due.value)}')),
         ListTile(leading: const Icon(Icons.handshake_outlined), title: Text(s('give_baki')), onTap: () { Navigator.pop(context); context.push('/add?type=bakiGiven&customer=${c.id}'); }),
         ListTile(leading: const Icon(Icons.handshake), title: Text(s('receive_baki')), onTap: () { Navigator.pop(context); context.push('/add?type=bakiReceived&customer=${c.id}'); }),
+        ListTile(
+          leading: const Icon(Icons.picture_as_pdf_outlined),
+          title: Text(s('statement')),
+          subtitle: Text(s('statement_sub')),
+          onTap: () {
+            Navigator.pop(context);
+            Navigator.of(context).push(MaterialPageRoute(builder: (_) => StatementScreen(customer: c)));
+          },
+        ),
         if (c.phone != null && due.value > 0)
           ListTile(
             leading: const Icon(Icons.chat, color: Color(0xFF25D366)),
             title: Text('${s('remind')} (WhatsApp)'),
             onTap: () {
-              final msg = s('statement_msg').replaceAll('{name}', c.name).replaceAll('{amt}', Fmt.money(context, code, due.value));
-              final phone = c.phone!.replaceAll(RegExp(r'\D'), '');
-              final intl = phone.startsWith('880') ? phone : '880${phone.replaceFirst(RegExp(r'^0'), '')}';
-              launchUrl(Uri.parse('https://wa.me/$intl?text=${Uri.encodeComponent(msg)}'), mode: LaunchMode.externalApplication);
+              remindOnWhatsApp(reminderText(s.call, code, c, due), c.phone!);
               Navigator.pop(context);
             },
           ),
@@ -73,8 +92,7 @@ class CustomersScreen extends ConsumerWidget {
             leading: const Icon(Icons.sms_outlined),
             title: Text('${s('remind')} (SMS)'),
             onTap: () {
-              final msg = s('statement_msg').replaceAll('{name}', c.name).replaceAll('{amt}', Fmt.money(context, code, due.value));
-              launchUrl(Uri(scheme: 'sms', path: c.phone, queryParameters: {'body': msg}));
+              remindBySms(reminderText(s.call, code, c, due), c.phone!);
               Navigator.pop(context);
             },
           ),

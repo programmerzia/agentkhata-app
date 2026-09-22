@@ -210,6 +210,9 @@ class SyncService {
     final low = (settings['lowFloatHours'] as num?)?.toInt();
     if (hours != null && hours > 0) await prefs.setInt('agentkhata.business_hours', hours);
     if (low != null && low > 0) await prefs.setInt('agentkhata.low_float_hours', low);
+    // Receipts print the counter's name until the agent types their own.
+    final counter = body['counterName'] as String?;
+    if (counter != null && counter.isNotEmpty) await prefs.setString('agentkhata.counter_name', counter);
     await repo.setMeta('settings_at', DateTime.now().toIso8601String());
   }
 

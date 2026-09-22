@@ -4,7 +4,8 @@ import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:share_plus/share_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../receipts/receipt.dart';
 
 import '../../app/providers.dart';
 import '../../app/theme.dart';
@@ -100,6 +101,8 @@ class SettingsScreen extends ConsumerWidget {
           ),
         _header(context, s('lock_title')),
         _LockTile(),
+        _header(context, s('receipt')),
+        const ReceiptHeaderTile(),
         _header(context, s('topup_request')),
         const TopUpNumberTile(),
         const WidgetPinTile(),
@@ -139,7 +142,7 @@ class SettingsScreen extends ConsumerWidget {
             final json = await ref.read(repositoryProvider).exportJson();
             final bytes = utf8.encode(jsonEncode(json));
             final name = 'agentkhata-backup-${DateTime.now().toIso8601String().substring(0, 10)}.json';
-            await SharePlus.instance.share(ShareParams(files: [XFile.fromData(bytes, name: name, mimeType: 'application/json')], fileNameOverrides: [name], text: 'AgentKhata backup'));
+            await shareBytes(bytes, name, 'application/json', 'AgentKhata backup');
           },
         ),
         const SizedBox(height: 32),
@@ -234,5 +237,45 @@ class SettingsScreen extends ConsumerWidget {
             flatPoisha: mode == RateMode.flat ? (quoted * 100).round() : null,
           );
     }
+  }
+}
+
+/// The name and number printed on every receipt and statement.
+class ReceiptHeaderTile extends ConsumerWidget {
+  const ReceiptHeaderTile({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final s = ref.s;
+    final h = ref.watch(receiptHeaderProvider).value;
+    return ListTile(
+      leading: const Icon(Icons.storefront_outlined),
+      title: Text(h?.name ?? ''),
+      subtitle: Text(h?.phone?.isNotEmpty == true ? h!.phone! : s('receipt_header_sub')),
+      trailing: const Icon(Icons.edit_outlined),
+      onTap: () async {
+        final name = TextEditingController(text: h?.name);
+        final phone = TextEditingController(text: h?.phone);
+        final ok = await showDialog<bool>(
+          context: context,
+          builder: (d) => AlertDialog(
+            title: Text(s('receipt_header')),
+            content: Column(mainAxisSize: MainAxisSize.min, children: [
+              TextField(controller: name, decoration: InputDecoration(labelText: s('shop_name'))),
+              TextField(controller: phone, keyboardType: TextInputType.phone, decoration: InputDecoration(labelText: s('phone'))),
+            ]),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(d, false), child: Text(s('cancel'))),
+              FilledButton(onPressed: () => Navigator.pop(d, true), child: Text(s('save'))),
+            ],
+          ),
+        );
+        if (ok != true) return;
+        final p = await SharedPreferences.getInstance();
+        await p.setString(shopNameKey, name.text.trim());
+        await p.setString(shopPhoneKey, phone.text.trim());
+        ref.invalidate(receiptHeaderProvider);
+      },
+    );
   }
 }

@@ -83,54 +83,6 @@ class _S extends ConsumerState<TransactionsScreen> {
     );
   }
 
-  void _detail(BuildContext context, Transaction t) {
-    final s = ref.s;
-    final code = ref.read(localeProvider);
-    showModalBottomSheet(
-      context: context,
-      showDragHandle: true,
-      builder: (_) => Padding(
-        padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(code == 'bn' ? t.type.labelBn : t.type.label, style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: 8),
-          _row(s('amount'), Fmt.money(context, code, t.amount.value)),
-          if (t.commission.value != 0) _row(s('commission'), Fmt.money(context, code, t.commission.value)),
-          if (t.fee.value != 0) _row(s('fees'), Fmt.money(context, code, t.fee.value)),
-          if (t.counterparty != null) _row(s('phone'), bnDigits(t.counterparty!, code)),
-          if (t.trxId != null) _row('TrxID', t.trxId!),
-          if (t.balanceAfter != null) _row('Balance', Fmt.money(context, code, t.balanceAfter!.value)),
-          _row('Time', bnDigits(DateFormat('d MMM yyyy, h:mm a', code == 'bn' ? 'bn' : 'en').format(t.occurredAt), code)),
-          if (t.note != null) _row(s('note'), t.note!),
-          const SizedBox(height: 12),
-          Row(children: [
-            if (t.status == TxStatus.pendingReview)
-              FilledButton.icon(
-                onPressed: () async {
-                  await ref.read(repositoryProvider).setStatus(t.id, TxStatus.posted);
-                  if (context.mounted) Navigator.pop(context);
-                },
-                icon: const Icon(Icons.check),
-                label: Text(s('accept')),
-              ),
-            const Spacer(),
-            TextButton.icon(
-              onPressed: () async {
-                await ref.read(repositoryProvider).setStatus(t.id, TxStatus.voided);
-                if (context.mounted) Navigator.pop(context);
-              },
-              icon: const Icon(Icons.delete_outline),
-              label: Text(s('void')),
-              style: TextButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.error),
-            ),
-          ]),
-        ]),
-      ),
-    );
-  }
+  void _detail(BuildContext context, Transaction t) => showTxDetail(context, ref, t);
 
-  Widget _row(String k, String v) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 3),
-        child: Row(children: [Expanded(child: Text(k, style: const TextStyle(color: Colors.grey))), Text(v, style: const TextStyle(fontWeight: FontWeight.w600))]),
-      );
 }

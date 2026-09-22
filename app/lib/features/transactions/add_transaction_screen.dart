@@ -6,6 +6,7 @@ import '../../app/providers.dart';
 import '../../core/core.dart';
 import '../../data/repository.dart';
 import '../../l10n/strings.dart';
+import '../receipts/receipt.dart';
 import '../voice/voice_amount.dart';
 
 /// Manual entry. Auto capture covers operator traffic; this is for cash
@@ -170,6 +171,14 @@ class _S extends ConsumerState<AddTransactionScreen> {
       counterWalletId: needsCounterWallet ? counterWalletId : null,
     );
     await repo.insertTransaction(tx);
-    if (mounted) context.pop();
+    if (!mounted) return;
+    // The customer is still at the counter: offer the receipt now, not later.
+    final nav = Navigator.of(context, rootNavigator: true);
+    final messenger = ScaffoldMessenger.of(context);
+    context.pop();
+    messenger.showSnackBar(SnackBar(
+      content: Text(ref.s('saved')),
+      action: SnackBarAction(label: ref.s('receipt'), onPressed: () => nav.push(MaterialPageRoute(fullscreenDialog: true, builder: (_) => ReceiptScreen(t: tx)))),
+    ));
   }
 }
