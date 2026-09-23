@@ -134,12 +134,39 @@ class SettingsScreen extends ConsumerWidget {
             onTap: () => _editWallet(context, ref, w),
           ),
         ListTile(leading: const Icon(Icons.add), title: Text(s('add_wallet')), onTap: () => _addWallet(context, ref)),
+        _header(context, s('service_charges')),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          child: Text(s('service_charges_sub'), style: Theme.of(context).textTheme.bodySmall),
+        ),
+        for (final r in rules.where((x) => x.txType == TxType.billPay))
+          ListTile(
+            dense: true,
+            leading: Icon(AppTheme.walletIcon(r.walletKind), color: AppTheme.walletColor(r.walletKind)),
+            title: Text('${code == 'bn' ? r.walletKind.labelBn : r.walletKind.label}${r.billerMatch?.isNotEmpty == true ? ' • ${r.billerMatch}' : ''}'),
+            subtitle: Text(r.takenInCash ? s('in_cash_short') : s('in_wallet_short')),
+            trailing: Text(
+              '৳${bnDigits(_quotedRate(r).toStringAsFixed(2), code)}',
+              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+            ),
+            onTap: () => _editRule(context, ref, r),
+          ),
+        ListTile(
+          dense: true,
+          leading: const Icon(Icons.add),
+          title: Text(s('add_biller_rate')),
+          subtitle: Text(s('add_biller_rate_sub')),
+          onTap: () => _addBillerRate(context, ref),
+        ),
         _header(context, s('rates')),
         for (final r in rules)
           ListTile(
             dense: true,
             leading: Icon(AppTheme.walletIcon(r.walletKind), color: AppTheme.walletColor(r.walletKind)),
-            title: Text('${code == 'bn' ? r.walletKind.labelBn : r.walletKind.label} • ${code == 'bn' ? r.txType.labelBn : r.txType.label}'),
+            title: Text(
+              '${code == 'bn' ? r.walletKind.labelBn : r.walletKind.label} • ${code == 'bn' ? r.txType.labelBn : r.txType.label}'
+              '${r.billerMatch?.isNotEmpty == true ? ' • ${r.billerMatch}' : ''}',
+            ),
             trailing: Text(
               '${bnDigits(_quotedRate(r).toStringAsFixed(2), code)} ${_modeLabel(s, r.mode)}${r.takenInCash ? ' · ${s('in_cash_short')}' : ''}',
             ),
@@ -268,11 +295,66 @@ class SettingsScreen extends ConsumerWidget {
     }
   }
 
+  /// A rate for one biller, when a shop charges differently for, say, a WASA
+  /// bill than an electricity one.
+  Future<void> _addBillerRate(BuildContext context, WidgetRef ref) async {
+    final s = ref.s;
+    var kind = WalletKind.bkash;
+    final biller = TextEditingController();
+    final amount = TextEditingController(text: '5.00');
+    var inCash = true;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSt) => AlertDialog(
+          title: Text(s('add_biller_rate')),
+          content: Column(mainAxisSize: MainAxisSize.min, children: [
+            DropdownButtonFormField<WalletKind>(
+              initialValue: kind,
+              decoration: InputDecoration(labelText: s('wallets')),
+              items: [for (final k in WalletKind.values.where((k) => k.isMfs)) DropdownMenuItem(value: k, child: Text(k.label))],
+              onChanged: (v) => setSt(() => kind = v ?? kind),
+            ),
+            const SizedBox(height: 8),
+            TextField(controller: biller, decoration: InputDecoration(labelText: s('biller_rule'), hintText: 'NESCO')),
+            const SizedBox(height: 8),
+            TextField(
+              controller: amount,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: InputDecoration(labelText: s('flat'), prefixText: '৳ '),
+            ),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              value: inCash,
+              onChanged: (v) => setSt(() => inCash = v),
+              title: Text(s('taken_in_cash')),
+            ),
+          ]),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(s('cancel'))),
+            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(s('save'))),
+          ],
+        ),
+      ),
+    );
+    if (ok != true || biller.text.trim().isEmpty) return;
+    await ref.read(repositoryProvider).upsertRule(
+          kind: kind,
+          type: TxType.billPay,
+          mode: RateMode.flat,
+          ratePpm: 0,
+          flatPoisha: ((double.tryParse(amount.text) ?? 0) * 100).round(),
+          takenInCash: inCash,
+          billerMatch: biller.text.trim(),
+        );
+  }
+
   Future<void> _editRule(BuildContext context, WidgetRef ref, db.CommissionRuleRow r) async {
     final s = ref.s;
     final ctl = TextEditingController(text: _quotedRate(r).toStringAsFixed(2));
     var mode = r.mode;
     var inCash = r.takenInCash;
+    final biller = TextEditingController(text: r.billerMatch ?? '');
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => StatefulBuilder(
@@ -286,6 +368,13 @@ class SettingsScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 12),
             TextField(controller: ctl, keyboardType: const TextInputType.numberWithOptions(decimal: true), autofocus: true),
+            if (r.txType == TxType.billPay) ...[
+              const SizedBox(height: 8),
+              TextField(
+                controller: biller,
+                decoration: InputDecoration(labelText: s('biller_rule'), helperText: s('biller_rule_help'), helperMaxLines: 2),
+              ),
+            ],
             const SizedBox(height: 8),
             /*
              * Where the money lands. An operator credits the wallet it was
@@ -316,6 +405,7 @@ class SettingsScreen extends ConsumerWidget {
             ratePpm: CommissionRule.ppmFrom(mode, quoted),
             flatPoisha: mode == RateMode.flat ? (quoted * 100).round() : null,
             takenInCash: inCash,
+            billerMatch: biller.text.trim().isEmpty ? null : biller.text.trim(),
           );
     }
   }

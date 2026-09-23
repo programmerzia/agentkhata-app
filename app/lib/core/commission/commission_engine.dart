@@ -38,6 +38,7 @@ class CommissionRule {
     this.slabs = const [],
     this.effectiveFrom,
     this.takenInCash = false,
+    this.billerMatch,
   });
   final WalletKind walletKind;
   final TxType txType;
@@ -61,6 +62,13 @@ class CommissionRule {
   /// wallet would leave the drawer short and the wallet over at counting
   /// time — every single bill.
   final bool takenInCash;
+
+  /// Narrows a rule to one biller: NESCO may pay differently from DESCO, and
+  /// a shop may charge less for a WASA bill than an electricity one. Null is
+  /// the shop's ordinary rate for that operator and entry type; a rule naming
+  /// a biller beats it, and the longest name wins so "NESCOPre" can differ
+  /// from "NESCO".
+  final String? billerMatch;
 
   /// The number the agent was quoted, for display and editing.
   double get quoted => switch (mode) {
@@ -143,16 +151,29 @@ class CommissionEngine {
     const CommissionRule(walletKind: WalletKind.nagad, txType: TxType.recharge, mode: RateMode.percent, ratePpm: 27500),
   ];
 
-  CommissionRule? ruleFor(WalletKind kind, TxType type, {DateTime? at}) {
+  CommissionRule? ruleFor(WalletKind kind, TxType type, {DateTime? at, String? biller}) {
+    final named = biller?.toLowerCase().trim();
     CommissionRule? best;
     for (final r in rules) {
       if (r.walletKind != kind || r.txType != type) continue;
       if (at != null && r.effectiveFrom != null && r.effectiveFrom!.isAfter(at)) continue;
-      if (best == null || (r.effectiveFrom ?? DateTime(2000)).isAfter(best.effectiveFrom ?? DateTime(2000))) {
-        best = r;
+      final m = r.billerMatch?.toLowerCase().trim();
+      if (m != null && m.isNotEmpty) {
+        // A rule for a biller only applies to that biller.
+        if (named == null || !named.contains(m)) continue;
       }
+      if (best == null || _beats(r, best)) best = r;
     }
     return best;
+  }
+
+  /// A rule naming a biller beats a general one; between two of those the
+  /// longer name is the more specific; otherwise the newer rate wins.
+  static bool _beats(CommissionRule a, CommissionRule b) {
+    final an = a.billerMatch?.trim().length ?? 0;
+    final bn = b.billerMatch?.trim().length ?? 0;
+    if (an != bn) return an > bn;
+    return (a.effectiveFrom ?? DateTime(2000)).isAfter(b.effectiveFrom ?? DateTime(2000));
   }
 
   Paisa commissionFor({
@@ -161,9 +182,10 @@ class CommissionEngine {
     required Paisa amount,
     Paisa? statedByOperator,
     DateTime? at,
+    String? biller,
   }) {
     if (statedByOperator != null && statedByOperator.value > 0) return statedByOperator;
-    return ruleFor(kind, type, at: at)?.compute(amount) ?? Paisa.zero;
+    return ruleFor(kind, type, at: at, biller: biller)?.compute(amount) ?? Paisa.zero;
   }
 
   /// True when the rule that pays this entry is taken from the customer in
@@ -174,8 +196,9 @@ class CommissionEngine {
     required TxType type,
     Paisa? statedByOperator,
     DateTime? at,
+    String? biller,
   }) {
     if (statedByOperator != null && statedByOperator.value > 0) return false;
-    return ruleFor(kind, type, at: at)?.takenInCash ?? false;
+    return ruleFor(kind, type, at: at, biller: biller)?.takenInCash ?? false;
   }
 }

@@ -3976,6 +3976,17 @@ class $CommissionRulesTable extends CommissionRules
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _billerMatchMeta = const VerificationMeta(
+    'billerMatch',
+  );
+  @override
+  late final GeneratedColumn<String> billerMatch = GeneratedColumn<String>(
+    'biller_match',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _effectiveFromMeta = const VerificationMeta(
     'effectiveFrom',
   );
@@ -4045,6 +4056,7 @@ class $CommissionRulesTable extends CommissionRules
     ratePpm,
     flatPoisha,
     takenInCash,
+    billerMatch,
     effectiveFrom,
     version,
     updatedAt,
@@ -4086,6 +4098,15 @@ class $CommissionRulesTable extends CommissionRules
         takenInCash.isAcceptableOrUnknown(
           data['taken_in_cash']!,
           _takenInCashMeta,
+        ),
+      );
+    }
+    if (data.containsKey('biller_match')) {
+      context.handle(
+        _billerMatchMeta,
+        billerMatch.isAcceptableOrUnknown(
+          data['biller_match']!,
+          _billerMatchMeta,
         ),
       );
     }
@@ -4165,6 +4186,10 @@ class $CommissionRulesTable extends CommissionRules
         DriftSqlType.bool,
         data['${effectivePrefix}taken_in_cash'],
       )!,
+      billerMatch: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}biller_match'],
+      ),
       effectiveFrom: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}effective_from'],
@@ -4218,6 +4243,10 @@ class CommissionRuleRow extends DataClass
   /// The agent takes this one from the customer in cash (a bill-pay service
   /// charge), rather than the operator crediting the wallet.
   final bool takenInCash;
+
+  /// Narrows the rule to one biller ("NESCO", "DESCO"); null is the ordinary
+  /// rate for that operator.
+  final String? billerMatch;
   final DateTime? effectiveFrom;
 
   /// Server-assigned. A push carries the version it last saw; a mismatch is a
@@ -4234,6 +4263,7 @@ class CommissionRuleRow extends DataClass
     required this.ratePpm,
     this.flatPoisha,
     required this.takenInCash,
+    this.billerMatch,
     this.effectiveFrom,
     required this.version,
     required this.updatedAt,
@@ -4264,6 +4294,9 @@ class CommissionRuleRow extends DataClass
       map['flat_poisha'] = Variable<int>(flatPoisha);
     }
     map['taken_in_cash'] = Variable<bool>(takenInCash);
+    if (!nullToAbsent || billerMatch != null) {
+      map['biller_match'] = Variable<String>(billerMatch);
+    }
     if (!nullToAbsent || effectiveFrom != null) {
       map['effective_from'] = Variable<DateTime>(effectiveFrom);
     }
@@ -4287,6 +4320,9 @@ class CommissionRuleRow extends DataClass
           ? const Value.absent()
           : Value(flatPoisha),
       takenInCash: Value(takenInCash),
+      billerMatch: billerMatch == null && nullToAbsent
+          ? const Value.absent()
+          : Value(billerMatch),
       effectiveFrom: effectiveFrom == null && nullToAbsent
           ? const Value.absent()
           : Value(effectiveFrom),
@@ -4318,6 +4354,7 @@ class CommissionRuleRow extends DataClass
       ratePpm: serializer.fromJson<int>(json['ratePpm']),
       flatPoisha: serializer.fromJson<int?>(json['flatPoisha']),
       takenInCash: serializer.fromJson<bool>(json['takenInCash']),
+      billerMatch: serializer.fromJson<String?>(json['billerMatch']),
       effectiveFrom: serializer.fromJson<DateTime?>(json['effectiveFrom']),
       version: serializer.fromJson<int>(json['version']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
@@ -4342,6 +4379,7 @@ class CommissionRuleRow extends DataClass
       'ratePpm': serializer.toJson<int>(ratePpm),
       'flatPoisha': serializer.toJson<int?>(flatPoisha),
       'takenInCash': serializer.toJson<bool>(takenInCash),
+      'billerMatch': serializer.toJson<String?>(billerMatch),
       'effectiveFrom': serializer.toJson<DateTime?>(effectiveFrom),
       'version': serializer.toJson<int>(version),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
@@ -4358,6 +4396,7 @@ class CommissionRuleRow extends DataClass
     int? ratePpm,
     Value<int?> flatPoisha = const Value.absent(),
     bool? takenInCash,
+    Value<String?> billerMatch = const Value.absent(),
     Value<DateTime?> effectiveFrom = const Value.absent(),
     int? version,
     DateTime? updatedAt,
@@ -4371,6 +4410,7 @@ class CommissionRuleRow extends DataClass
     ratePpm: ratePpm ?? this.ratePpm,
     flatPoisha: flatPoisha.present ? flatPoisha.value : this.flatPoisha,
     takenInCash: takenInCash ?? this.takenInCash,
+    billerMatch: billerMatch.present ? billerMatch.value : this.billerMatch,
     effectiveFrom: effectiveFrom.present
         ? effectiveFrom.value
         : this.effectiveFrom,
@@ -4394,6 +4434,9 @@ class CommissionRuleRow extends DataClass
       takenInCash: data.takenInCash.present
           ? data.takenInCash.value
           : this.takenInCash,
+      billerMatch: data.billerMatch.present
+          ? data.billerMatch.value
+          : this.billerMatch,
       effectiveFrom: data.effectiveFrom.present
           ? data.effectiveFrom.value
           : this.effectiveFrom,
@@ -4414,6 +4457,7 @@ class CommissionRuleRow extends DataClass
           ..write('ratePpm: $ratePpm, ')
           ..write('flatPoisha: $flatPoisha, ')
           ..write('takenInCash: $takenInCash, ')
+          ..write('billerMatch: $billerMatch, ')
           ..write('effectiveFrom: $effectiveFrom, ')
           ..write('version: $version, ')
           ..write('updatedAt: $updatedAt, ')
@@ -4432,6 +4476,7 @@ class CommissionRuleRow extends DataClass
     ratePpm,
     flatPoisha,
     takenInCash,
+    billerMatch,
     effectiveFrom,
     version,
     updatedAt,
@@ -4449,6 +4494,7 @@ class CommissionRuleRow extends DataClass
           other.ratePpm == this.ratePpm &&
           other.flatPoisha == this.flatPoisha &&
           other.takenInCash == this.takenInCash &&
+          other.billerMatch == this.billerMatch &&
           other.effectiveFrom == this.effectiveFrom &&
           other.version == this.version &&
           other.updatedAt == this.updatedAt &&
@@ -4464,6 +4510,7 @@ class CommissionRulesCompanion extends UpdateCompanion<CommissionRuleRow> {
   final Value<int> ratePpm;
   final Value<int?> flatPoisha;
   final Value<bool> takenInCash;
+  final Value<String?> billerMatch;
   final Value<DateTime?> effectiveFrom;
   final Value<int> version;
   final Value<DateTime> updatedAt;
@@ -4478,6 +4525,7 @@ class CommissionRulesCompanion extends UpdateCompanion<CommissionRuleRow> {
     this.ratePpm = const Value.absent(),
     this.flatPoisha = const Value.absent(),
     this.takenInCash = const Value.absent(),
+    this.billerMatch = const Value.absent(),
     this.effectiveFrom = const Value.absent(),
     this.version = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -4493,6 +4541,7 @@ class CommissionRulesCompanion extends UpdateCompanion<CommissionRuleRow> {
     this.ratePpm = const Value.absent(),
     this.flatPoisha = const Value.absent(),
     this.takenInCash = const Value.absent(),
+    this.billerMatch = const Value.absent(),
     this.effectiveFrom = const Value.absent(),
     this.version = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -4511,6 +4560,7 @@ class CommissionRulesCompanion extends UpdateCompanion<CommissionRuleRow> {
     Expression<int>? ratePpm,
     Expression<int>? flatPoisha,
     Expression<bool>? takenInCash,
+    Expression<String>? billerMatch,
     Expression<DateTime>? effectiveFrom,
     Expression<int>? version,
     Expression<DateTime>? updatedAt,
@@ -4526,6 +4576,7 @@ class CommissionRulesCompanion extends UpdateCompanion<CommissionRuleRow> {
       if (ratePpm != null) 'rate_ppm': ratePpm,
       if (flatPoisha != null) 'flat_poisha': flatPoisha,
       if (takenInCash != null) 'taken_in_cash': takenInCash,
+      if (billerMatch != null) 'biller_match': billerMatch,
       if (effectiveFrom != null) 'effective_from': effectiveFrom,
       if (version != null) 'version': version,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -4543,6 +4594,7 @@ class CommissionRulesCompanion extends UpdateCompanion<CommissionRuleRow> {
     Value<int>? ratePpm,
     Value<int?>? flatPoisha,
     Value<bool>? takenInCash,
+    Value<String?>? billerMatch,
     Value<DateTime?>? effectiveFrom,
     Value<int>? version,
     Value<DateTime>? updatedAt,
@@ -4558,6 +4610,7 @@ class CommissionRulesCompanion extends UpdateCompanion<CommissionRuleRow> {
       ratePpm: ratePpm ?? this.ratePpm,
       flatPoisha: flatPoisha ?? this.flatPoisha,
       takenInCash: takenInCash ?? this.takenInCash,
+      billerMatch: billerMatch ?? this.billerMatch,
       effectiveFrom: effectiveFrom ?? this.effectiveFrom,
       version: version ?? this.version,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -4597,6 +4650,9 @@ class CommissionRulesCompanion extends UpdateCompanion<CommissionRuleRow> {
     if (takenInCash.present) {
       map['taken_in_cash'] = Variable<bool>(takenInCash.value);
     }
+    if (billerMatch.present) {
+      map['biller_match'] = Variable<String>(billerMatch.value);
+    }
     if (effectiveFrom.present) {
       map['effective_from'] = Variable<DateTime>(effectiveFrom.value);
     }
@@ -4628,6 +4684,7 @@ class CommissionRulesCompanion extends UpdateCompanion<CommissionRuleRow> {
           ..write('ratePpm: $ratePpm, ')
           ..write('flatPoisha: $flatPoisha, ')
           ..write('takenInCash: $takenInCash, ')
+          ..write('billerMatch: $billerMatch, ')
           ..write('effectiveFrom: $effectiveFrom, ')
           ..write('version: $version, ')
           ..write('updatedAt: $updatedAt, ')
@@ -7141,6 +7198,7 @@ typedef $$CommissionRulesTableCreateCompanionBuilder =
       Value<int> ratePpm,
       Value<int?> flatPoisha,
       Value<bool> takenInCash,
+      Value<String?> billerMatch,
       Value<DateTime?> effectiveFrom,
       Value<int> version,
       Value<DateTime> updatedAt,
@@ -7157,6 +7215,7 @@ typedef $$CommissionRulesTableUpdateCompanionBuilder =
       Value<int> ratePpm,
       Value<int?> flatPoisha,
       Value<bool> takenInCash,
+      Value<String?> billerMatch,
       Value<DateTime?> effectiveFrom,
       Value<int> version,
       Value<DateTime> updatedAt,
@@ -7209,6 +7268,11 @@ class $$CommissionRulesTableFilterComposer
 
   ColumnFilters<bool> get takenInCash => $composableBuilder(
     column: $table.takenInCash,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get billerMatch => $composableBuilder(
+    column: $table.billerMatch,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -7282,6 +7346,11 @@ class $$CommissionRulesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get billerMatch => $composableBuilder(
+    column: $table.billerMatch,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get effectiveFrom => $composableBuilder(
     column: $table.effectiveFrom,
     builder: (column) => ColumnOrderings(column),
@@ -7342,6 +7411,11 @@ class $$CommissionRulesTableAnnotationComposer
 
   GeneratedColumn<bool> get takenInCash => $composableBuilder(
     column: $table.takenInCash,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get billerMatch => $composableBuilder(
+    column: $table.billerMatch,
     builder: (column) => column,
   );
 
@@ -7407,6 +7481,7 @@ class $$CommissionRulesTableTableManager
                 Value<int> ratePpm = const Value.absent(),
                 Value<int?> flatPoisha = const Value.absent(),
                 Value<bool> takenInCash = const Value.absent(),
+                Value<String?> billerMatch = const Value.absent(),
                 Value<DateTime?> effectiveFrom = const Value.absent(),
                 Value<int> version = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
@@ -7421,6 +7496,7 @@ class $$CommissionRulesTableTableManager
                 ratePpm: ratePpm,
                 flatPoisha: flatPoisha,
                 takenInCash: takenInCash,
+                billerMatch: billerMatch,
                 effectiveFrom: effectiveFrom,
                 version: version,
                 updatedAt: updatedAt,
@@ -7437,6 +7513,7 @@ class $$CommissionRulesTableTableManager
                 Value<int> ratePpm = const Value.absent(),
                 Value<int?> flatPoisha = const Value.absent(),
                 Value<bool> takenInCash = const Value.absent(),
+                Value<String?> billerMatch = const Value.absent(),
                 Value<DateTime?> effectiveFrom = const Value.absent(),
                 Value<int> version = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
@@ -7451,6 +7528,7 @@ class $$CommissionRulesTableTableManager
                 ratePpm: ratePpm,
                 flatPoisha: flatPoisha,
                 takenInCash: takenInCash,
+                billerMatch: billerMatch,
                 effectiveFrom: effectiveFrom,
                 version: version,
                 updatedAt: updatedAt,

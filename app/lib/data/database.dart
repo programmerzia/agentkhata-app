@@ -130,6 +130,10 @@ class CommissionRules extends Table {
   /// The agent takes this one from the customer in cash (a bill-pay service
   /// charge), rather than the operator crediting the wallet.
   BoolColumn get takenInCash => boolean().withDefault(const Constant(false))();
+
+  /// Narrows the rule to one biller ("NESCO", "DESCO"); null is the ordinary
+  /// rate for that operator.
+  TextColumn get billerMatch => text().nullable()();
   DateTimeColumn get effectiveFrom => dateTime().nullable()();
   /// Server-assigned. A push carries the version it last saw; a mismatch is a
   /// conflict the server reports rather than an edit silently overwritten.
@@ -153,7 +157,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _open());
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   /// Native: SQLite file in app documents. Web: sqlite3 compiled to wasm,
   /// persisted in OPFS/IndexedDB through a shared worker.
@@ -234,6 +238,9 @@ class AppDatabase extends _$AppDatabase {
           if (from < 5) {
             await m.addColumn(commissionRules, commissionRules.takenInCash);
             await m.addColumn(transactions, transactions.commissionInCash);
+          }
+          if (from < 6) {
+            await m.addColumn(commissionRules, commissionRules.billerMatch);
           }
         },
       );

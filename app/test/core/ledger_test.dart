@@ -135,4 +135,39 @@ void main() {
       expect(own < 0, type.debitsWallet, reason: '${type.name}: ledger moves the wallet by $own');
     }
   });
+
+  group('service charges differ by operator and by biller', () {
+    const bkashDefault = CommissionRule(walletKind: WalletKind.bkash, txType: TxType.billPay, mode: RateMode.flat, flatPoisha: 500, takenInCash: true);
+    const rocketCheaper = CommissionRule(walletKind: WalletKind.rocket, txType: TxType.billPay, mode: RateMode.flat, flatPoisha: 300, takenInCash: true);
+    const wasaDearer = CommissionRule(walletKind: WalletKind.bkash, txType: TxType.billPay, mode: RateMode.flat, flatPoisha: 1000, takenInCash: true, billerMatch: 'WASA');
+    final engine = CommissionEngine(const [bkashDefault, rocketCheaper, wasaDearer]);
+
+    Paisa charge(WalletKind kind, {String? biller}) =>
+        engine.commissionFor(kind: kind, type: TxType.billPay, amount: Paisa.fromTaka(500), biller: biller);
+
+    test('each operator keeps its own rate', () {
+      expect(charge(WalletKind.bkash), Paisa.fromTaka(5));
+      expect(charge(WalletKind.rocket), Paisa.fromTaka(3));
+    });
+
+    test('a rule naming a biller beats the shop\'s ordinary rate', () {
+      expect(charge(WalletKind.bkash, biller: 'WASA'), Paisa.fromTaka(10));
+      expect(charge(WalletKind.bkash, biller: 'NESCOPre'), Paisa.fromTaka(5));
+    });
+
+    test('a biller rule never leaks onto another operator', () {
+      expect(charge(WalletKind.rocket, biller: 'WASA'), Paisa.fromTaka(3));
+    });
+
+    test('NESCOPre matches a rule written for NESCO', () {
+      final e = CommissionEngine(const [
+        bkashDefault,
+        CommissionRule(walletKind: WalletKind.bkash, txType: TxType.billPay, mode: RateMode.flat, flatPoisha: 800, takenInCash: true, billerMatch: 'NESCO'),
+      ]);
+      expect(
+        e.commissionFor(kind: WalletKind.bkash, type: TxType.billPay, amount: Paisa.fromTaka(500), biller: 'NESCOPre'),
+        Paisa.fromTaka(8),
+      );
+    });
+  });
 }

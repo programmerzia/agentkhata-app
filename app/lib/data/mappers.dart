@@ -63,5 +63,6 @@ extension CommissionRuleRowX on CommissionRuleRow {
         flatPoisha: flatPoisha,
         effectiveFrom: effectiveFrom,
         takenInCash: takenInCash,
+        billerMatch: billerMatch,
       );
 }

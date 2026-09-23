@@ -243,6 +243,7 @@ class Repository {
             ratePpm: Value(r.ratePpm),
             flatPoisha: Value(r.flatPoisha),
             takenInCash: Value(r.takenInCash),
+            billerMatch: Value(r.billerMatch),
             updatedAt: Value(DateTime.now()),
             dirty: const Value(true),
           ),
@@ -259,6 +260,7 @@ class Repository {
     required int ratePpm,
     int? flatPoisha,
     bool takenInCash = false,
+    String? billerMatch,
   }) =>
       db.into(db.commissionRules).insertOnConflictUpdate(
             CommissionRulesCompanion(
@@ -269,6 +271,7 @@ class Repository {
               ratePpm: Value(ratePpm),
               flatPoisha: Value(flatPoisha),
               takenInCash: Value(takenInCash),
+              billerMatch: Value(billerMatch),
               updatedAt: Value(DateTime.now()),
               dirty: const Value(true),
             ),

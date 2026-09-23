@@ -70,8 +70,8 @@ class IngestionService {
     if (dup != null) return keep(core.ParseStatus.duplicate, reason: 'duplicate of ${dup.id}', txId: dup.id);
 
     final engine = core.CommissionEngine(await repo.commissionRules());
-    final commission = engine.commissionFor(kind: wallet.kind, type: parsed.type!, amount: parsed.amount!, statedByOperator: parsed.commission, at: parsed.occurredAt);
-    final inCash = engine.takenInCash(kind: wallet.kind, type: parsed.type!, statedByOperator: parsed.commission, at: parsed.occurredAt);
+    final commission = engine.commissionFor(kind: wallet.kind, type: parsed.type!, amount: parsed.amount!, statedByOperator: parsed.commission, at: parsed.occurredAt, biller: parsed.billerName);
+    final inCash = engine.takenInCash(kind: wallet.kind, type: parsed.type!, statedByOperator: parsed.commission, at: parsed.occurredAt, biller: parsed.billerName);
 
     final tx = core.Transaction(
       id: newId(),
