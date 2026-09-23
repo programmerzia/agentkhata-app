@@ -37,6 +37,7 @@ class CommissionRule {
     this.flatPoisha,
     this.slabs = const [],
     this.effectiveFrom,
+    this.takenInCash = false,
   });
   final WalletKind walletKind;
   final TxType txType;
@@ -51,6 +52,15 @@ class CommissionRule {
   final int? flatPoisha;
   final List<Slab> slabs;
   final DateTime? effectiveFrom;
+
+  /// Where the earning lands.
+  ///
+  /// An operator's commission is credited to the same wallet it was earned
+  /// in. A bill-pay service charge is not: the agent takes ৳5 from the
+  /// customer's hand while bKash debits the wallet, so booking it to the
+  /// wallet would leave the drawer short and the wallet over at counting
+  /// time — every single bill.
+  final bool takenInCash;
 
   /// The number the agent was quoted, for display and editing.
   double get quoted => switch (mode) {
@@ -118,6 +128,16 @@ class CommissionEngine {
     const CommissionRule(walletKind: WalletKind.upay, txType: TxType.cashIn, mode: RateMode.perThousand, ratePpm: 4100),
     const CommissionRule(walletKind: WalletKind.upay, txType: TxType.cashOut, mode: RateMode.perThousand, ratePpm: 4100),
     // Mobile recharge margin, typical retailer share 2.75%.
+    /*
+     * Bill pay pays the agent nothing; the shop charges the customer a
+     * service fee — ৳5 is what counters in this market take. It is money
+     * handed over in cash, so it is marked as such and the rate is editable
+     * in Settings like every other.
+     */
+    const CommissionRule(walletKind: WalletKind.bkash, txType: TxType.billPay, mode: RateMode.flat, flatPoisha: 500, takenInCash: true),
+    const CommissionRule(walletKind: WalletKind.nagad, txType: TxType.billPay, mode: RateMode.flat, flatPoisha: 500, takenInCash: true),
+    const CommissionRule(walletKind: WalletKind.rocket, txType: TxType.billPay, mode: RateMode.flat, flatPoisha: 500, takenInCash: true),
+    const CommissionRule(walletKind: WalletKind.upay, txType: TxType.billPay, mode: RateMode.flat, flatPoisha: 500, takenInCash: true),
     const CommissionRule(walletKind: WalletKind.recharge, txType: TxType.recharge, mode: RateMode.percent, ratePpm: 27500),
     const CommissionRule(walletKind: WalletKind.bkash, txType: TxType.recharge, mode: RateMode.percent, ratePpm: 27500),
     const CommissionRule(walletKind: WalletKind.nagad, txType: TxType.recharge, mode: RateMode.percent, ratePpm: 27500),
@@ -144,5 +164,18 @@ class CommissionEngine {
   }) {
     if (statedByOperator != null && statedByOperator.value > 0) return statedByOperator;
     return ruleFor(kind, type, at: at)?.compute(amount) ?? Paisa.zero;
+  }
+
+  /// True when the rule that pays this entry is taken from the customer in
+  /// cash. An operator-stated commission is never that: the operator credits
+  /// the wallet itself.
+  bool takenInCash({
+    required WalletKind kind,
+    required TxType type,
+    Paisa? statedByOperator,
+    DateTime? at,
+  }) {
+    if (statedByOperator != null && statedByOperator.value > 0) return false;
+    return ruleFor(kind, type, at: at)?.takenInCash ?? false;
   }
 }

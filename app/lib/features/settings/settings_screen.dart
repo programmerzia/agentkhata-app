@@ -140,7 +140,9 @@ class SettingsScreen extends ConsumerWidget {
             dense: true,
             leading: Icon(AppTheme.walletIcon(r.walletKind), color: AppTheme.walletColor(r.walletKind)),
             title: Text('${code == 'bn' ? r.walletKind.labelBn : r.walletKind.label} • ${code == 'bn' ? r.txType.labelBn : r.txType.label}'),
-            trailing: Text('${bnDigits(_quotedRate(r).toStringAsFixed(2), code)} ${_modeLabel(s, r.mode)}'),
+            trailing: Text(
+              '${bnDigits(_quotedRate(r).toStringAsFixed(2), code)} ${_modeLabel(s, r.mode)}${r.takenInCash ? ' · ${s('in_cash_short')}' : ''}',
+            ),
             onTap: () => _editRule(context, ref, r),
           ),
         _header(context, s('language')),
@@ -270,6 +272,7 @@ class SettingsScreen extends ConsumerWidget {
     final s = ref.s;
     final ctl = TextEditingController(text: _quotedRate(r).toStringAsFixed(2));
     var mode = r.mode;
+    var inCash = r.takenInCash;
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => StatefulBuilder(
@@ -283,6 +286,21 @@ class SettingsScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 12),
             TextField(controller: ctl, keyboardType: const TextInputType.numberWithOptions(decimal: true), autofocus: true),
+            const SizedBox(height: 8),
+            /*
+             * Where the money lands. An operator credits the wallet it was
+             * earned in; a bill-pay service charge comes out of the
+             * customer's hand as cash. Getting this wrong leaves the drawer
+             * short and the wallet over at counting time, every single bill.
+             */
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              value: inCash,
+              onChanged: (v) => setSt(() => inCash = v),
+              title: Text(s('taken_in_cash')),
+              subtitle: Text(s('taken_in_cash_sub')),
+              isThreeLine: true,
+            ),
           ]),
           actions: [TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(s('cancel'))), FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(s('save')))],
         ),
@@ -297,6 +315,7 @@ class SettingsScreen extends ConsumerWidget {
             mode: mode,
             ratePpm: CommissionRule.ppmFrom(mode, quoted),
             flatPoisha: mode == RateMode.flat ? (quoted * 100).round() : null,
+            takenInCash: inCash,
           );
     }
   }

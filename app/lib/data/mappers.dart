@@ -33,6 +33,7 @@ extension TransactionRowX on TransactionRow {
         billerName: billerName,
         billerAccount: billerAccount,
         billerToken: billerToken,
+        commissionInCash: commissionInCash,
         status: status,
       );
 }
@@ -61,5 +62,6 @@ extension CommissionRuleRowX on CommissionRuleRow {
         ratePpm: ratePpm,
         flatPoisha: flatPoisha,
         effectiveFrom: effectiveFrom,
+        takenInCash: takenInCash,
       );
 }

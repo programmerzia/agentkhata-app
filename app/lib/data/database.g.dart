@@ -909,6 +909,21 @@ class $TransactionsTable extends Transactions
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _commissionInCashMeta = const VerificationMeta(
+    'commissionInCash',
+  );
+  @override
+  late final GeneratedColumn<bool> commissionInCash = GeneratedColumn<bool>(
+    'commission_in_cash',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("commission_in_cash" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   @override
   late final GeneratedColumnWithTypeConverter<core.TxStatus, int> status =
       GeneratedColumn<int>(
@@ -999,6 +1014,7 @@ class $TransactionsTable extends Transactions
     billerName,
     billerAccount,
     billerToken,
+    commissionInCash,
     status,
     createdAt,
     version,
@@ -1137,6 +1153,15 @@ class $TransactionsTable extends Transactions
         ),
       );
     }
+    if (data.containsKey('commission_in_cash')) {
+      context.handle(
+        _commissionInCashMeta,
+        commissionInCash.isAcceptableOrUnknown(
+          data['commission_in_cash']!,
+          _commissionInCashMeta,
+        ),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -1252,6 +1277,10 @@ class $TransactionsTable extends Transactions
         DriftSqlType.string,
         data['${effectivePrefix}biller_token'],
       ),
+      commissionInCash: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}commission_in_cash'],
+      )!,
       status: $TransactionsTable.$converterstatus.fromSql(
         attachedDatabase.typeMapping.read(
           DriftSqlType.int,
@@ -1319,6 +1348,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
   /// The prepaid token, when the biller sends one. What a customer comes back
   /// for when the power is still off.
   final String? billerToken;
+  final bool commissionInCash;
   final core.TxStatus status;
   final DateTime createdAt;
 
@@ -1347,6 +1377,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     this.billerName,
     this.billerAccount,
     this.billerToken,
+    required this.commissionInCash,
     required this.status,
     required this.createdAt,
     required this.version,
@@ -1403,6 +1434,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     if (!nullToAbsent || billerToken != null) {
       map['biller_token'] = Variable<String>(billerToken);
     }
+    map['commission_in_cash'] = Variable<bool>(commissionInCash);
     {
       map['status'] = Variable<int>(
         $TransactionsTable.$converterstatus.toSql(status),
@@ -1456,6 +1488,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       billerToken: billerToken == null && nullToAbsent
           ? const Value.absent()
           : Value(billerToken),
+      commissionInCash: Value(commissionInCash),
       status: Value(status),
       createdAt: Value(createdAt),
       version: Value(version),
@@ -1495,6 +1528,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       billerName: serializer.fromJson<String?>(json['billerName']),
       billerAccount: serializer.fromJson<String?>(json['billerAccount']),
       billerToken: serializer.fromJson<String?>(json['billerToken']),
+      commissionInCash: serializer.fromJson<bool>(json['commissionInCash']),
       status: $TransactionsTable.$converterstatus.fromJson(
         serializer.fromJson<int>(json['status']),
       ),
@@ -1531,6 +1565,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       'billerName': serializer.toJson<String?>(billerName),
       'billerAccount': serializer.toJson<String?>(billerAccount),
       'billerToken': serializer.toJson<String?>(billerToken),
+      'commissionInCash': serializer.toJson<bool>(commissionInCash),
       'status': serializer.toJson<int>(
         $TransactionsTable.$converterstatus.toJson(status),
       ),
@@ -1561,6 +1596,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     Value<String?> billerName = const Value.absent(),
     Value<String?> billerAccount = const Value.absent(),
     Value<String?> billerToken = const Value.absent(),
+    bool? commissionInCash,
     core.TxStatus? status,
     DateTime? createdAt,
     int? version,
@@ -1590,6 +1626,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
         ? billerAccount.value
         : this.billerAccount,
     billerToken: billerToken.present ? billerToken.value : this.billerToken,
+    commissionInCash: commissionInCash ?? this.commissionInCash,
     status: status ?? this.status,
     createdAt: createdAt ?? this.createdAt,
     version: version ?? this.version,
@@ -1637,6 +1674,9 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       billerToken: data.billerToken.present
           ? data.billerToken.value
           : this.billerToken,
+      commissionInCash: data.commissionInCash.present
+          ? data.commissionInCash.value
+          : this.commissionInCash,
       status: data.status.present ? data.status.value : this.status,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       version: data.version.present ? data.version.value : this.version,
@@ -1667,6 +1707,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
           ..write('billerName: $billerName, ')
           ..write('billerAccount: $billerAccount, ')
           ..write('billerToken: $billerToken, ')
+          ..write('commissionInCash: $commissionInCash, ')
           ..write('status: $status, ')
           ..write('createdAt: $createdAt, ')
           ..write('version: $version, ')
@@ -1697,6 +1738,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     billerName,
     billerAccount,
     billerToken,
+    commissionInCash,
     status,
     createdAt,
     version,
@@ -1726,6 +1768,7 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
           other.billerName == this.billerName &&
           other.billerAccount == this.billerAccount &&
           other.billerToken == this.billerToken &&
+          other.commissionInCash == this.commissionInCash &&
           other.status == this.status &&
           other.createdAt == this.createdAt &&
           other.version == this.version &&
@@ -1753,6 +1796,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
   final Value<String?> billerName;
   final Value<String?> billerAccount;
   final Value<String?> billerToken;
+  final Value<bool> commissionInCash;
   final Value<core.TxStatus> status;
   final Value<DateTime> createdAt;
   final Value<int> version;
@@ -1779,6 +1823,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     this.billerName = const Value.absent(),
     this.billerAccount = const Value.absent(),
     this.billerToken = const Value.absent(),
+    this.commissionInCash = const Value.absent(),
     this.status = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.version = const Value.absent(),
@@ -1806,6 +1851,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     this.billerName = const Value.absent(),
     this.billerAccount = const Value.absent(),
     this.billerToken = const Value.absent(),
+    this.commissionInCash = const Value.absent(),
     this.status = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.version = const Value.absent(),
@@ -1838,6 +1884,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     Expression<String>? billerName,
     Expression<String>? billerAccount,
     Expression<String>? billerToken,
+    Expression<bool>? commissionInCash,
     Expression<int>? status,
     Expression<DateTime>? createdAt,
     Expression<int>? version,
@@ -1865,6 +1912,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
       if (billerName != null) 'biller_name': billerName,
       if (billerAccount != null) 'biller_account': billerAccount,
       if (billerToken != null) 'biller_token': billerToken,
+      if (commissionInCash != null) 'commission_in_cash': commissionInCash,
       if (status != null) 'status': status,
       if (createdAt != null) 'created_at': createdAt,
       if (version != null) 'version': version,
@@ -1894,6 +1942,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     Value<String?>? billerName,
     Value<String?>? billerAccount,
     Value<String?>? billerToken,
+    Value<bool>? commissionInCash,
     Value<core.TxStatus>? status,
     Value<DateTime>? createdAt,
     Value<int>? version,
@@ -1921,6 +1970,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
       billerName: billerName ?? this.billerName,
       billerAccount: billerAccount ?? this.billerAccount,
       billerToken: billerToken ?? this.billerToken,
+      commissionInCash: commissionInCash ?? this.commissionInCash,
       status: status ?? this.status,
       createdAt: createdAt ?? this.createdAt,
       version: version ?? this.version,
@@ -1992,6 +2042,9 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     if (billerToken.present) {
       map['biller_token'] = Variable<String>(billerToken.value);
     }
+    if (commissionInCash.present) {
+      map['commission_in_cash'] = Variable<bool>(commissionInCash.value);
+    }
     if (status.present) {
       map['status'] = Variable<int>(
         $TransactionsTable.$converterstatus.toSql(status.value),
@@ -2039,6 +2092,7 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
           ..write('billerName: $billerName, ')
           ..write('billerAccount: $billerAccount, ')
           ..write('billerToken: $billerToken, ')
+          ..write('commissionInCash: $commissionInCash, ')
           ..write('status: $status, ')
           ..write('createdAt: $createdAt, ')
           ..write('version: $version, ')
@@ -3907,6 +3961,21 @@ class $CommissionRulesTable extends CommissionRules
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _takenInCashMeta = const VerificationMeta(
+    'takenInCash',
+  );
+  @override
+  late final GeneratedColumn<bool> takenInCash = GeneratedColumn<bool>(
+    'taken_in_cash',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("taken_in_cash" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   static const VerificationMeta _effectiveFromMeta = const VerificationMeta(
     'effectiveFrom',
   );
@@ -3975,6 +4044,7 @@ class $CommissionRulesTable extends CommissionRules
     mode,
     ratePpm,
     flatPoisha,
+    takenInCash,
     effectiveFrom,
     version,
     updatedAt,
@@ -4008,6 +4078,15 @@ class $CommissionRulesTable extends CommissionRules
       context.handle(
         _flatPoishaMeta,
         flatPoisha.isAcceptableOrUnknown(data['flat_poisha']!, _flatPoishaMeta),
+      );
+    }
+    if (data.containsKey('taken_in_cash')) {
+      context.handle(
+        _takenInCashMeta,
+        takenInCash.isAcceptableOrUnknown(
+          data['taken_in_cash']!,
+          _takenInCashMeta,
+        ),
       );
     }
     if (data.containsKey('effective_from')) {
@@ -4082,6 +4161,10 @@ class $CommissionRulesTable extends CommissionRules
         DriftSqlType.int,
         data['${effectivePrefix}flat_poisha'],
       ),
+      takenInCash: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}taken_in_cash'],
+      )!,
       effectiveFrom: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}effective_from'],
@@ -4131,6 +4214,10 @@ class CommissionRuleRow extends DataClass
 
   /// Used only when `mode` is flat.
   final int? flatPoisha;
+
+  /// The agent takes this one from the customer in cash (a bill-pay service
+  /// charge), rather than the operator crediting the wallet.
+  final bool takenInCash;
   final DateTime? effectiveFrom;
 
   /// Server-assigned. A push carries the version it last saw; a mismatch is a
@@ -4146,6 +4233,7 @@ class CommissionRuleRow extends DataClass
     required this.mode,
     required this.ratePpm,
     this.flatPoisha,
+    required this.takenInCash,
     this.effectiveFrom,
     required this.version,
     required this.updatedAt,
@@ -4175,6 +4263,7 @@ class CommissionRuleRow extends DataClass
     if (!nullToAbsent || flatPoisha != null) {
       map['flat_poisha'] = Variable<int>(flatPoisha);
     }
+    map['taken_in_cash'] = Variable<bool>(takenInCash);
     if (!nullToAbsent || effectiveFrom != null) {
       map['effective_from'] = Variable<DateTime>(effectiveFrom);
     }
@@ -4197,6 +4286,7 @@ class CommissionRuleRow extends DataClass
       flatPoisha: flatPoisha == null && nullToAbsent
           ? const Value.absent()
           : Value(flatPoisha),
+      takenInCash: Value(takenInCash),
       effectiveFrom: effectiveFrom == null && nullToAbsent
           ? const Value.absent()
           : Value(effectiveFrom),
@@ -4227,6 +4317,7 @@ class CommissionRuleRow extends DataClass
       ),
       ratePpm: serializer.fromJson<int>(json['ratePpm']),
       flatPoisha: serializer.fromJson<int?>(json['flatPoisha']),
+      takenInCash: serializer.fromJson<bool>(json['takenInCash']),
       effectiveFrom: serializer.fromJson<DateTime?>(json['effectiveFrom']),
       version: serializer.fromJson<int>(json['version']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
@@ -4250,6 +4341,7 @@ class CommissionRuleRow extends DataClass
       ),
       'ratePpm': serializer.toJson<int>(ratePpm),
       'flatPoisha': serializer.toJson<int?>(flatPoisha),
+      'takenInCash': serializer.toJson<bool>(takenInCash),
       'effectiveFrom': serializer.toJson<DateTime?>(effectiveFrom),
       'version': serializer.toJson<int>(version),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
@@ -4265,6 +4357,7 @@ class CommissionRuleRow extends DataClass
     core.RateMode? mode,
     int? ratePpm,
     Value<int?> flatPoisha = const Value.absent(),
+    bool? takenInCash,
     Value<DateTime?> effectiveFrom = const Value.absent(),
     int? version,
     DateTime? updatedAt,
@@ -4277,6 +4370,7 @@ class CommissionRuleRow extends DataClass
     mode: mode ?? this.mode,
     ratePpm: ratePpm ?? this.ratePpm,
     flatPoisha: flatPoisha.present ? flatPoisha.value : this.flatPoisha,
+    takenInCash: takenInCash ?? this.takenInCash,
     effectiveFrom: effectiveFrom.present
         ? effectiveFrom.value
         : this.effectiveFrom,
@@ -4297,6 +4391,9 @@ class CommissionRuleRow extends DataClass
       flatPoisha: data.flatPoisha.present
           ? data.flatPoisha.value
           : this.flatPoisha,
+      takenInCash: data.takenInCash.present
+          ? data.takenInCash.value
+          : this.takenInCash,
       effectiveFrom: data.effectiveFrom.present
           ? data.effectiveFrom.value
           : this.effectiveFrom,
@@ -4316,6 +4413,7 @@ class CommissionRuleRow extends DataClass
           ..write('mode: $mode, ')
           ..write('ratePpm: $ratePpm, ')
           ..write('flatPoisha: $flatPoisha, ')
+          ..write('takenInCash: $takenInCash, ')
           ..write('effectiveFrom: $effectiveFrom, ')
           ..write('version: $version, ')
           ..write('updatedAt: $updatedAt, ')
@@ -4333,6 +4431,7 @@ class CommissionRuleRow extends DataClass
     mode,
     ratePpm,
     flatPoisha,
+    takenInCash,
     effectiveFrom,
     version,
     updatedAt,
@@ -4349,6 +4448,7 @@ class CommissionRuleRow extends DataClass
           other.mode == this.mode &&
           other.ratePpm == this.ratePpm &&
           other.flatPoisha == this.flatPoisha &&
+          other.takenInCash == this.takenInCash &&
           other.effectiveFrom == this.effectiveFrom &&
           other.version == this.version &&
           other.updatedAt == this.updatedAt &&
@@ -4363,6 +4463,7 @@ class CommissionRulesCompanion extends UpdateCompanion<CommissionRuleRow> {
   final Value<core.RateMode> mode;
   final Value<int> ratePpm;
   final Value<int?> flatPoisha;
+  final Value<bool> takenInCash;
   final Value<DateTime?> effectiveFrom;
   final Value<int> version;
   final Value<DateTime> updatedAt;
@@ -4376,6 +4477,7 @@ class CommissionRulesCompanion extends UpdateCompanion<CommissionRuleRow> {
     this.mode = const Value.absent(),
     this.ratePpm = const Value.absent(),
     this.flatPoisha = const Value.absent(),
+    this.takenInCash = const Value.absent(),
     this.effectiveFrom = const Value.absent(),
     this.version = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -4390,6 +4492,7 @@ class CommissionRulesCompanion extends UpdateCompanion<CommissionRuleRow> {
     required core.RateMode mode,
     this.ratePpm = const Value.absent(),
     this.flatPoisha = const Value.absent(),
+    this.takenInCash = const Value.absent(),
     this.effectiveFrom = const Value.absent(),
     this.version = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -4407,6 +4510,7 @@ class CommissionRulesCompanion extends UpdateCompanion<CommissionRuleRow> {
     Expression<int>? mode,
     Expression<int>? ratePpm,
     Expression<int>? flatPoisha,
+    Expression<bool>? takenInCash,
     Expression<DateTime>? effectiveFrom,
     Expression<int>? version,
     Expression<DateTime>? updatedAt,
@@ -4421,6 +4525,7 @@ class CommissionRulesCompanion extends UpdateCompanion<CommissionRuleRow> {
       if (mode != null) 'mode': mode,
       if (ratePpm != null) 'rate_ppm': ratePpm,
       if (flatPoisha != null) 'flat_poisha': flatPoisha,
+      if (takenInCash != null) 'taken_in_cash': takenInCash,
       if (effectiveFrom != null) 'effective_from': effectiveFrom,
       if (version != null) 'version': version,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -4437,6 +4542,7 @@ class CommissionRulesCompanion extends UpdateCompanion<CommissionRuleRow> {
     Value<core.RateMode>? mode,
     Value<int>? ratePpm,
     Value<int?>? flatPoisha,
+    Value<bool>? takenInCash,
     Value<DateTime?>? effectiveFrom,
     Value<int>? version,
     Value<DateTime>? updatedAt,
@@ -4451,6 +4557,7 @@ class CommissionRulesCompanion extends UpdateCompanion<CommissionRuleRow> {
       mode: mode ?? this.mode,
       ratePpm: ratePpm ?? this.ratePpm,
       flatPoisha: flatPoisha ?? this.flatPoisha,
+      takenInCash: takenInCash ?? this.takenInCash,
       effectiveFrom: effectiveFrom ?? this.effectiveFrom,
       version: version ?? this.version,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -4487,6 +4594,9 @@ class CommissionRulesCompanion extends UpdateCompanion<CommissionRuleRow> {
     if (flatPoisha.present) {
       map['flat_poisha'] = Variable<int>(flatPoisha.value);
     }
+    if (takenInCash.present) {
+      map['taken_in_cash'] = Variable<bool>(takenInCash.value);
+    }
     if (effectiveFrom.present) {
       map['effective_from'] = Variable<DateTime>(effectiveFrom.value);
     }
@@ -4517,6 +4627,7 @@ class CommissionRulesCompanion extends UpdateCompanion<CommissionRuleRow> {
           ..write('mode: $mode, ')
           ..write('ratePpm: $ratePpm, ')
           ..write('flatPoisha: $flatPoisha, ')
+          ..write('takenInCash: $takenInCash, ')
           ..write('effectiveFrom: $effectiveFrom, ')
           ..write('version: $version, ')
           ..write('updatedAt: $updatedAt, ')
@@ -5315,6 +5426,7 @@ typedef $$TransactionsTableCreateCompanionBuilder =
       Value<String?> billerName,
       Value<String?> billerAccount,
       Value<String?> billerToken,
+      Value<bool> commissionInCash,
       Value<core.TxStatus> status,
       Value<DateTime> createdAt,
       Value<int> version,
@@ -5343,6 +5455,7 @@ typedef $$TransactionsTableUpdateCompanionBuilder =
       Value<String?> billerName,
       Value<String?> billerAccount,
       Value<String?> billerToken,
+      Value<bool> commissionInCash,
       Value<core.TxStatus> status,
       Value<DateTime> createdAt,
       Value<int> version,
@@ -5467,6 +5580,11 @@ class $$TransactionsTableFilterComposer
 
   ColumnFilters<String> get billerToken => $composableBuilder(
     column: $table.billerToken,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get commissionInCash => $composableBuilder(
+    column: $table.commissionInCash,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -5619,6 +5737,11 @@ class $$TransactionsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get commissionInCash => $composableBuilder(
+    column: $table.commissionInCash,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get status => $composableBuilder(
     column: $table.status,
     builder: (column) => ColumnOrderings(column),
@@ -5753,6 +5876,11 @@ class $$TransactionsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<bool> get commissionInCash => $composableBuilder(
+    column: $table.commissionInCash,
+    builder: (column) => column,
+  );
+
   GeneratedColumnWithTypeConverter<core.TxStatus, int> get status =>
       $composableBuilder(column: $table.status, builder: (column) => column);
 
@@ -5841,6 +5969,7 @@ class $$TransactionsTableTableManager
                 Value<String?> billerName = const Value.absent(),
                 Value<String?> billerAccount = const Value.absent(),
                 Value<String?> billerToken = const Value.absent(),
+                Value<bool> commissionInCash = const Value.absent(),
                 Value<core.TxStatus> status = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<int> version = const Value.absent(),
@@ -5867,6 +5996,7 @@ class $$TransactionsTableTableManager
                 billerName: billerName,
                 billerAccount: billerAccount,
                 billerToken: billerToken,
+                commissionInCash: commissionInCash,
                 status: status,
                 createdAt: createdAt,
                 version: version,
@@ -5895,6 +6025,7 @@ class $$TransactionsTableTableManager
                 Value<String?> billerName = const Value.absent(),
                 Value<String?> billerAccount = const Value.absent(),
                 Value<String?> billerToken = const Value.absent(),
+                Value<bool> commissionInCash = const Value.absent(),
                 Value<core.TxStatus> status = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<int> version = const Value.absent(),
@@ -5921,6 +6052,7 @@ class $$TransactionsTableTableManager
                 billerName: billerName,
                 billerAccount: billerAccount,
                 billerToken: billerToken,
+                commissionInCash: commissionInCash,
                 status: status,
                 createdAt: createdAt,
                 version: version,
@@ -7008,6 +7140,7 @@ typedef $$CommissionRulesTableCreateCompanionBuilder =
       required core.RateMode mode,
       Value<int> ratePpm,
       Value<int?> flatPoisha,
+      Value<bool> takenInCash,
       Value<DateTime?> effectiveFrom,
       Value<int> version,
       Value<DateTime> updatedAt,
@@ -7023,6 +7156,7 @@ typedef $$CommissionRulesTableUpdateCompanionBuilder =
       Value<core.RateMode> mode,
       Value<int> ratePpm,
       Value<int?> flatPoisha,
+      Value<bool> takenInCash,
       Value<DateTime?> effectiveFrom,
       Value<int> version,
       Value<DateTime> updatedAt,
@@ -7070,6 +7204,11 @@ class $$CommissionRulesTableFilterComposer
 
   ColumnFilters<int> get flatPoisha => $composableBuilder(
     column: $table.flatPoisha,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get takenInCash => $composableBuilder(
+    column: $table.takenInCash,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -7138,6 +7277,11 @@ class $$CommissionRulesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get takenInCash => $composableBuilder(
+    column: $table.takenInCash,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get effectiveFrom => $composableBuilder(
     column: $table.effectiveFrom,
     builder: (column) => ColumnOrderings(column),
@@ -7193,6 +7337,11 @@ class $$CommissionRulesTableAnnotationComposer
 
   GeneratedColumn<int> get flatPoisha => $composableBuilder(
     column: $table.flatPoisha,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get takenInCash => $composableBuilder(
+    column: $table.takenInCash,
     builder: (column) => column,
   );
 
@@ -7257,6 +7406,7 @@ class $$CommissionRulesTableTableManager
                 Value<core.RateMode> mode = const Value.absent(),
                 Value<int> ratePpm = const Value.absent(),
                 Value<int?> flatPoisha = const Value.absent(),
+                Value<bool> takenInCash = const Value.absent(),
                 Value<DateTime?> effectiveFrom = const Value.absent(),
                 Value<int> version = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
@@ -7270,6 +7420,7 @@ class $$CommissionRulesTableTableManager
                 mode: mode,
                 ratePpm: ratePpm,
                 flatPoisha: flatPoisha,
+                takenInCash: takenInCash,
                 effectiveFrom: effectiveFrom,
                 version: version,
                 updatedAt: updatedAt,
@@ -7285,6 +7436,7 @@ class $$CommissionRulesTableTableManager
                 required core.RateMode mode,
                 Value<int> ratePpm = const Value.absent(),
                 Value<int?> flatPoisha = const Value.absent(),
+                Value<bool> takenInCash = const Value.absent(),
                 Value<DateTime?> effectiveFrom = const Value.absent(),
                 Value<int> version = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
@@ -7298,6 +7450,7 @@ class $$CommissionRulesTableTableManager
                 mode: mode,
                 ratePpm: ratePpm,
                 flatPoisha: flatPoisha,
+                takenInCash: takenInCash,
                 effectiveFrom: effectiveFrom,
                 version: version,
                 updatedAt: updatedAt,

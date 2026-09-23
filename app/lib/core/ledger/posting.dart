@@ -91,7 +91,8 @@ class Ledger {
     }
 
     if (t.commission.value != 0) {
-      p.addAll([Posting(w, t.commission), Posting(Account.commissionIncome, -t.commission)]);
+      final lands = t.commissionInCash ? cash : w;
+      p.addAll([Posting(lands, t.commission), Posting(Account.commissionIncome, -t.commission)]);
     }
     if (t.fee.value != 0) {
       p.addAll([Posting(w, -t.fee), Posting(Account.feeExpense, t.fee)]);

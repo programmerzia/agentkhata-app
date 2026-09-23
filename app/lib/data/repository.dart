@@ -134,6 +134,7 @@ class Repository {
         billerName: Value(t.billerName),
         billerAccount: Value(t.billerAccount),
         billerToken: Value(t.billerToken),
+        commissionInCash: Value(t.commissionInCash),
         status: Value(t.status),
         updatedAt: Value(DateTime.now()),
         dirty: const Value(true),
@@ -241,6 +242,7 @@ class Repository {
             mode: r.mode,
             ratePpm: Value(r.ratePpm),
             flatPoisha: Value(r.flatPoisha),
+            takenInCash: Value(r.takenInCash),
             updatedAt: Value(DateTime.now()),
             dirty: const Value(true),
           ),
@@ -256,6 +258,7 @@ class Repository {
     required core.RateMode mode,
     required int ratePpm,
     int? flatPoisha,
+    bool takenInCash = false,
   }) =>
       db.into(db.commissionRules).insertOnConflictUpdate(
             CommissionRulesCompanion(
@@ -265,6 +268,7 @@ class Repository {
               mode: Value(mode),
               ratePpm: Value(ratePpm),
               flatPoisha: Value(flatPoisha),
+              takenInCash: Value(takenInCash),
               updatedAt: Value(DateTime.now()),
               dirty: const Value(true),
             ),

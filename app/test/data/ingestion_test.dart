@@ -145,4 +145,20 @@ void main() {
     expect(recharges.single.counterparty, '01581344833');
   });
 
+
+  test('the shop\'s bill-pay charge lands in the drawer, not in the wallet', () async {
+    final before = await balances();
+
+    await svc.ingest(
+      body: 'Bill successfully paid.\nBiller: NESCOPre \nMMYYYY/Contact: 01718424859\nA/C: 78032986 \nAmount: Tk 500.00 \nFee: Tk 5.00 \nTrxID: DHK4MGM1W7 at 20/08/2026 11:20',
+      sender: '16247',
+      source: core.TxSource.autoSms,
+    );
+
+    final after = await balances();
+    // bKash paid the bill and its own fee: 500 + 5 out, nothing back.
+    expect(after[bkashId]!.value - before[bkashId]!.value, core.Paisa.fromTaka(-505).value);
+    // The customer handed over 500 for the bill and 5 for the service.
+    expect(after[cashId]!.value - before[cashId]!.value, core.Paisa.fromTaka(505).value);
+  });
 }

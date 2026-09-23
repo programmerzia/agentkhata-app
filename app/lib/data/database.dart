@@ -51,6 +51,7 @@ class Transactions extends Table {
   /// The prepaid token, when the biller sends one. What a customer comes back
   /// for when the power is still off.
   TextColumn get billerToken => text().nullable()();
+  BoolColumn get commissionInCash => boolean().withDefault(const Constant(false))();
   IntColumn get status => intEnum<core.TxStatus>().withDefault(const Constant(0))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   /// Server-assigned. A push carries the version it last saw; a mismatch is a
@@ -125,6 +126,10 @@ class CommissionRules extends Table {
   IntColumn get ratePpm => integer().withDefault(const Constant(0))();
   /// Used only when `mode` is flat.
   IntColumn get flatPoisha => integer().nullable()();
+
+  /// The agent takes this one from the customer in cash (a bill-pay service
+  /// charge), rather than the operator crediting the wallet.
+  BoolColumn get takenInCash => boolean().withDefault(const Constant(false))();
   DateTimeColumn get effectiveFrom => dateTime().nullable()();
   /// Server-assigned. A push carries the version it last saw; a mismatch is a
   /// conflict the server reports rather than an edit silently overwritten.
@@ -148,7 +153,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _open());
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   /// Native: SQLite file in app documents. Web: sqlite3 compiled to wasm,
   /// persisted in OPFS/IndexedDB through a shared worker.
@@ -225,6 +230,10 @@ class AppDatabase extends _$AppDatabase {
             await customStatement(
               'CREATE INDEX IF NOT EXISTS idx_tx_biller_account ON transactions(biller_account)',
             );
+          }
+          if (from < 5) {
+            await m.addColumn(commissionRules, commissionRules.takenInCash);
+            await m.addColumn(transactions, transactions.commissionInCash);
           }
         },
       );

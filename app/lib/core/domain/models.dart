@@ -40,6 +40,7 @@ class Transaction {
     this.billerName,
     this.billerAccount,
     this.billerToken,
+    this.commissionInCash = false,
     this.status = TxStatus.posted,
   });
   final String id;
@@ -65,6 +66,10 @@ class Transaction {
   final String? billerName;
   final String? billerAccount;
   final String? billerToken;
+
+  /// True when the commission was taken from the customer in cash rather than
+  /// credited to the wallet the entry belongs to.
+  final bool commissionInCash;
   final TxStatus status;
 
   Transaction copyWith({
@@ -94,6 +99,7 @@ class Transaction {
         billerName: billerName,
         billerAccount: billerAccount,
         billerToken: billerToken ?? this.billerToken,
+        commissionInCash: commissionInCash,
         status: status ?? this.status,
       );
 }
