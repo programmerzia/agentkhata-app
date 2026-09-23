@@ -112,12 +112,26 @@ class SettingsScreen extends ConsumerWidget {
         const WidgetPinTile(),
         _header(context, s('wallets')),
         for (final w in wallets)
-          SwitchListTile(
-            secondary: Icon(AppTheme.walletIcon(w.kind), color: AppTheme.walletColor(w.kind)),
+          ListTile(
+            leading: Icon(AppTheme.walletIcon(w.kind), color: AppTheme.walletColor(w.kind)),
             title: Text(w.nameIn(code)),
-            subtitle: w.accountNumber == null ? null : Text(bnDigits(w.accountNumber!, code)),
-            value: w.isActive,
-            onChanged: w.kind == WalletKind.cash ? null : (v) => ref.read(repositoryProvider).setWalletActive(w.id, v),
+            // An operator account with no number cannot be matched to the
+            // same account on another phone, so say so instead of leaving the
+            // line blank. The cash drawer has no number to give.
+            subtitle: w.accountNumber?.isNotEmpty == true
+                ? Text(bnDigits(w.accountNumber!, code))
+                : w.kind == WalletKind.cash
+                    ? null
+                    : Text(s('no_account_number'), style: TextStyle(color: Theme.of(context).colorScheme.error)),
+            trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+              Switch(
+                value: w.isActive,
+                onChanged: w.kind == WalletKind.cash ? null : (v) => ref.read(repositoryProvider).setWalletActive(w.id, v),
+              ),
+              const SizedBox(width: 4),
+              const Icon(Icons.edit_outlined, size: 20),
+            ]),
+            onTap: () => _editWallet(context, ref, w),
           ),
         ListTile(leading: const Icon(Icons.add), title: Text(s('add_wallet')), onTap: () => _addWallet(context, ref)),
         _header(context, s('rates')),
@@ -168,6 +182,39 @@ class SettingsScreen extends ConsumerWidget {
   String _modeLabel(S s, RateMode m) => switch (m) { RateMode.perThousand => s('per_thousand'), RateMode.percent => s('percent'), RateMode.flat => s('flat'), RateMode.slab => 'slab' };
 
   Widget _header(BuildContext c, String t) => Padding(padding: const EdgeInsets.fromLTRB(16, 20, 16, 4), child: Text(t, style: Theme.of(c).textTheme.titleSmall?.copyWith(color: Theme.of(c).colorScheme.primary)));
+
+  Future<void> _editWallet(BuildContext context, WidgetRef ref, Wallet w) async {
+    final s = ref.s;
+    final label = TextEditingController(text: w.label);
+    final number = TextEditingController(text: w.accountNumber ?? '');
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (d) => AlertDialog(
+        title: Text(s('edit_wallet')),
+        content: Column(mainAxisSize: MainAxisSize.min, children: [
+          TextField(controller: label, decoration: InputDecoration(labelText: s('name'))),
+          const SizedBox(height: 8),
+          if (w.kind != WalletKind.cash)
+            TextField(
+            controller: number,
+            keyboardType: TextInputType.phone,
+            decoration: InputDecoration(labelText: s('account_number'), helperText: s('account_number_why'), helperMaxLines: 3),
+          ),
+        ]),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(d, false), child: Text(s('cancel'))),
+          FilledButton(onPressed: () => Navigator.pop(d, true), child: Text(s('save'))),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    final name = label.text.trim();
+    await ref.read(repositoryProvider).editWallet(
+          w.id,
+          label: name.isEmpty ? w.label : name,
+          accountNumber: number.text.trim().isEmpty ? null : number.text.trim(),
+        );
+  }
 
   Future<void> _addWallet(BuildContext context, WidgetRef ref) async {
     final s = ref.s;

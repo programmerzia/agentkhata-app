@@ -47,6 +47,18 @@ class Repository {
     return id;
   }
 
+  /// Change what an existing wallet is called and which number it carries.
+  ///
+  /// Opening balance and dates are untouched: those are history, and the
+  /// agent editing a name must not silently restate the books.
+  Future<void> editWallet(String id, {required String label, String? accountNumber}) =>
+      (db.update(db.wallets)..where((w) => w.id.equals(id))).write(WalletsCompanion(
+        label: Value(label),
+        accountNumber: Value(accountNumber),
+        updatedAt: Value(DateTime.now()),
+        dirty: const Value(true),
+      ));
+
   Future<String> upsertWallet({
     String? id,
     required core.WalletKind kind,

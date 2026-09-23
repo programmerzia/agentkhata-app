@@ -53,6 +53,10 @@ class _S extends ConsumerState<OnboardingScreen> {
   // A new shop.
   final selected = <WalletKind>{};
   final balances = <WalletKind, TextEditingController>{for (final k in WalletKind.values) k: TextEditingController()};
+  /// The agent's own bKash/Nagad number per service. It is how a second phone's
+  /// accounts are matched to this shop's, how two bKash accounts are told
+  /// apart, and what a receipt shows.
+  final numbers = <WalletKind, TextEditingController>{for (final k in WalletKind.values) k: TextEditingController()};
 
   // Joining a shop.
   List<Map<String, dynamic>>? shopWallets;
@@ -215,6 +219,8 @@ class _S extends ConsumerState<OnboardingScreen> {
             onChanged: (v) => setState(() => v ? selected.add(k) : selected.remove(k)),
             balance: balances[k]!,
             balanceLabel: s('opening_balance'),
+            number: k == WalletKind.recharge || k == WalletKind.bank ? null : numbers[k],
+            numberLabel: s('account_number'),
           ),
         const SizedBox(height: 8),
         _WalletPick(
@@ -307,7 +313,14 @@ class _S extends ConsumerState<OnboardingScreen> {
       final cashId = await repo.ensureCashWallet();
       await repo.upsertWallet(id: cashId, kind: WalletKind.cash, label: 'Cash', openingBalance: Paisa.tryParse(balances[WalletKind.cash]!.text) ?? Paisa.zero, openingAt: now);
       for (final k in selected) {
-        await repo.upsertWallet(kind: k, label: k.label, openingBalance: Paisa.tryParse(balances[k]!.text) ?? Paisa.zero, openingAt: now);
+        final number = numbers[k]!.text.trim();
+        await repo.upsertWallet(
+          kind: k,
+          label: k.label,
+          accountNumber: number.isEmpty ? null : number,
+          openingBalance: Paisa.tryParse(balances[k]!.text) ?? Paisa.zero,
+          openingAt: now,
+        );
       }
       await repo.seedDefaultRulesIfEmpty();
     }
@@ -401,6 +414,8 @@ class _WalletPick extends StatelessWidget {
     this.found,
     this.balance,
     this.balanceLabel,
+    this.number,
+    this.numberLabel,
   });
 
   final WalletKind kind;
@@ -410,6 +425,8 @@ class _WalletPick extends StatelessWidget {
   final ValueChanged<bool>? onChanged;
   final TextEditingController? balance;
   final String? balanceLabel;
+  final TextEditingController? number;
+  final String? numberLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -441,6 +458,15 @@ class _WalletPick extends StatelessWidget {
                 child: Text(found!, style: TextStyle(fontSize: 11, color: Colors.green.shade700, fontWeight: FontWeight.w600)),
               ),
           ]),
+          if (selected && number != null)
+            Padding(
+              padding: const EdgeInsets.only(left: 12, top: 4),
+              child: TextField(
+                controller: number,
+                keyboardType: TextInputType.phone,
+                decoration: InputDecoration(labelText: numberLabel, prefixIcon: const Icon(Icons.badge_outlined, size: 18)),
+              ),
+            ),
           if (selected && balance != null)
             Padding(
               padding: const EdgeInsets.only(left: 12, top: 4),

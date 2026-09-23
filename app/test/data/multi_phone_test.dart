@@ -135,4 +135,24 @@ void main() {
     expect(expense.walletId, shopDrawer);
     expect(await repo.unadoptedWallets(), hasLength(2), reason: 'bKash and Nagad still await adoption');
   });
+
+  test('editing an account keeps its opening balance and marks it for sync', () async {
+    await repo.upsertWallet(id: bkashId, kind: core.WalletKind.bkash, label: 'bKash', openingBalance: core.Paisa.fromTaka(20000));
+    await (db.update(db.wallets)..where((w) => w.id.equals(bkashId))).write(const WalletsCompanion(dirty: Value(false)));
+
+    await repo.editWallet(bkashId, label: 'Counter 2 bKash', accountNumber: '01711-223344');
+
+    final row = await (db.select(db.wallets)..where((w) => w.id.equals(bkashId))).getSingle();
+    expect(row.label, 'Counter 2 bKash');
+    expect(row.accountNumber, '01711-223344');
+    expect(row.openingBalance, core.Paisa.fromTaka(20000).value);
+    expect(row.dirty, isTrue, reason: 'the shop must learn the number');
+  });
+
+  test('clearing the number empties it rather than keeping the old one', () async {
+    await repo.editWallet(nagadId, label: 'Nagad', accountNumber: '01811000011');
+    await repo.editWallet(nagadId, label: 'Nagad', accountNumber: null);
+    final row = await (db.select(db.wallets)..where((w) => w.id.equals(nagadId))).getSingle();
+    expect(row.accountNumber, isNull);
+  });
 }

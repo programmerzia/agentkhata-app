@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -58,13 +60,38 @@ class _Shell extends ConsumerWidget {
   const _Shell(this.shell);
   final StatefulNavigationShell shell;
 
+  /// Back must not throw the agent out of the app mid-counter.
+  ///
+  /// From any tab but home, back goes home — what the hardware key means on
+  /// a phone. From home it asks, because the next thing a dropped app costs
+  /// is a customer standing at the counter while it reloads.
+  Future<void> _back(BuildContext context, WidgetRef ref) async {
+    if (shell.currentIndex != 0) {
+      shell.goBranch(0, initialLocation: true);
+      return;
+    }
+    final s = ref.s;
+    final leave = await showDialog<bool>(
+      context: context,
+      builder: (d) => AlertDialog(
+        title: Text(s('exit_title')),
+        content: Text(s('exit_body')),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(d, false), child: Text(s('stay'))),
+          FilledButton(onPressed: () => Navigator.pop(d, true), child: Text(s('exit'))),
+        ],
+      ),
+    );
+    if (leave == true) await SystemNavigator.pop();
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final s = ref.s;
     final wide = MediaQuery.sizeOf(context).width >= 900;
     if (wide) {
       // Portal / tablet layout: persistent rail, content constrained for readability.
-      return Scaffold(
+      return _guardBack(context, ref, Scaffold(
         body: Row(children: [
           NavigationRail(
             extended: MediaQuery.sizeOf(context).width >= 1200,
@@ -83,9 +110,9 @@ class _Shell extends ConsumerWidget {
           const VerticalDivider(width: 1),
           Expanded(child: Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 1100), child: shell))),
         ]),
-      );
+      ));
     }
-    return Scaffold(
+    return _guardBack(context, ref, Scaffold(
       body: shell,
       bottomNavigationBar: NavigationBar(
         selectedIndex: shell.currentIndex,
@@ -99,6 +126,15 @@ class _Shell extends ConsumerWidget {
           NavigationDestination(icon: const Icon(Icons.settings_outlined), selectedIcon: const Icon(Icons.settings), label: s('settings')),
         ],
       ),
-    );
+    ));
   }
+
+  /// Takes over the system back gesture for the tab shell.
+  Widget _guardBack(BuildContext context, WidgetRef ref, Widget child) => PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop) unawaited(_back(context, ref));
+        },
+        child: child,
+      );
 }
