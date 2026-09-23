@@ -876,6 +876,39 @@ class $TransactionsTable extends Transactions
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _billerNameMeta = const VerificationMeta(
+    'billerName',
+  );
+  @override
+  late final GeneratedColumn<String> billerName = GeneratedColumn<String>(
+    'biller_name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _billerAccountMeta = const VerificationMeta(
+    'billerAccount',
+  );
+  @override
+  late final GeneratedColumn<String> billerAccount = GeneratedColumn<String>(
+    'biller_account',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _billerTokenMeta = const VerificationMeta(
+    'billerToken',
+  );
+  @override
+  late final GeneratedColumn<String> billerToken = GeneratedColumn<String>(
+    'biller_token',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   late final GeneratedColumnWithTypeConverter<core.TxStatus, int> status =
       GeneratedColumn<int>(
@@ -963,6 +996,9 @@ class $TransactionsTable extends Transactions
     note,
     customerId,
     counterWalletId,
+    billerName,
+    billerAccount,
+    billerToken,
     status,
     createdAt,
     version,
@@ -1077,6 +1113,30 @@ class $TransactionsTable extends Transactions
         ),
       );
     }
+    if (data.containsKey('biller_name')) {
+      context.handle(
+        _billerNameMeta,
+        billerName.isAcceptableOrUnknown(data['biller_name']!, _billerNameMeta),
+      );
+    }
+    if (data.containsKey('biller_account')) {
+      context.handle(
+        _billerAccountMeta,
+        billerAccount.isAcceptableOrUnknown(
+          data['biller_account']!,
+          _billerAccountMeta,
+        ),
+      );
+    }
+    if (data.containsKey('biller_token')) {
+      context.handle(
+        _billerTokenMeta,
+        billerToken.isAcceptableOrUnknown(
+          data['biller_token']!,
+          _billerTokenMeta,
+        ),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -1180,6 +1240,18 @@ class $TransactionsTable extends Transactions
         DriftSqlType.string,
         data['${effectivePrefix}counter_wallet_id'],
       ),
+      billerName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}biller_name'],
+      ),
+      billerAccount: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}biller_account'],
+      ),
+      billerToken: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}biller_token'],
+      ),
       status: $TransactionsTable.$converterstatus.fromSql(
         attachedDatabase.typeMapping.read(
           DriftSqlType.int,
@@ -1238,6 +1310,15 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
   final String? note;
   final String? customerId;
   final String? counterWalletId;
+
+  /// Who a bill was paid to, and the customer's account with them — the meter
+  /// number on a prepaid electricity bill, a postpaid account, a WASA number.
+  final String? billerName;
+  final String? billerAccount;
+
+  /// The prepaid token, when the biller sends one. What a customer comes back
+  /// for when the power is still off.
+  final String? billerToken;
   final core.TxStatus status;
   final DateTime createdAt;
 
@@ -1263,6 +1344,9 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     this.note,
     this.customerId,
     this.counterWalletId,
+    this.billerName,
+    this.billerAccount,
+    this.billerToken,
     required this.status,
     required this.createdAt,
     required this.version,
@@ -1310,6 +1394,15 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     if (!nullToAbsent || counterWalletId != null) {
       map['counter_wallet_id'] = Variable<String>(counterWalletId);
     }
+    if (!nullToAbsent || billerName != null) {
+      map['biller_name'] = Variable<String>(billerName);
+    }
+    if (!nullToAbsent || billerAccount != null) {
+      map['biller_account'] = Variable<String>(billerAccount);
+    }
+    if (!nullToAbsent || billerToken != null) {
+      map['biller_token'] = Variable<String>(billerToken);
+    }
     {
       map['status'] = Variable<int>(
         $TransactionsTable.$converterstatus.toSql(status),
@@ -1354,6 +1447,15 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       counterWalletId: counterWalletId == null && nullToAbsent
           ? const Value.absent()
           : Value(counterWalletId),
+      billerName: billerName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(billerName),
+      billerAccount: billerAccount == null && nullToAbsent
+          ? const Value.absent()
+          : Value(billerAccount),
+      billerToken: billerToken == null && nullToAbsent
+          ? const Value.absent()
+          : Value(billerToken),
       status: Value(status),
       createdAt: Value(createdAt),
       version: Value(version),
@@ -1390,6 +1492,9 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       note: serializer.fromJson<String?>(json['note']),
       customerId: serializer.fromJson<String?>(json['customerId']),
       counterWalletId: serializer.fromJson<String?>(json['counterWalletId']),
+      billerName: serializer.fromJson<String?>(json['billerName']),
+      billerAccount: serializer.fromJson<String?>(json['billerAccount']),
+      billerToken: serializer.fromJson<String?>(json['billerToken']),
       status: $TransactionsTable.$converterstatus.fromJson(
         serializer.fromJson<int>(json['status']),
       ),
@@ -1423,6 +1528,9 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       'note': serializer.toJson<String?>(note),
       'customerId': serializer.toJson<String?>(customerId),
       'counterWalletId': serializer.toJson<String?>(counterWalletId),
+      'billerName': serializer.toJson<String?>(billerName),
+      'billerAccount': serializer.toJson<String?>(billerAccount),
+      'billerToken': serializer.toJson<String?>(billerToken),
       'status': serializer.toJson<int>(
         $TransactionsTable.$converterstatus.toJson(status),
       ),
@@ -1450,6 +1558,9 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     Value<String?> note = const Value.absent(),
     Value<String?> customerId = const Value.absent(),
     Value<String?> counterWalletId = const Value.absent(),
+    Value<String?> billerName = const Value.absent(),
+    Value<String?> billerAccount = const Value.absent(),
+    Value<String?> billerToken = const Value.absent(),
     core.TxStatus? status,
     DateTime? createdAt,
     int? version,
@@ -1474,6 +1585,11 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     counterWalletId: counterWalletId.present
         ? counterWalletId.value
         : this.counterWalletId,
+    billerName: billerName.present ? billerName.value : this.billerName,
+    billerAccount: billerAccount.present
+        ? billerAccount.value
+        : this.billerAccount,
+    billerToken: billerToken.present ? billerToken.value : this.billerToken,
     status: status ?? this.status,
     createdAt: createdAt ?? this.createdAt,
     version: version ?? this.version,
@@ -1512,6 +1628,15 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       counterWalletId: data.counterWalletId.present
           ? data.counterWalletId.value
           : this.counterWalletId,
+      billerName: data.billerName.present
+          ? data.billerName.value
+          : this.billerName,
+      billerAccount: data.billerAccount.present
+          ? data.billerAccount.value
+          : this.billerAccount,
+      billerToken: data.billerToken.present
+          ? data.billerToken.value
+          : this.billerToken,
       status: data.status.present ? data.status.value : this.status,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       version: data.version.present ? data.version.value : this.version,
@@ -1539,6 +1664,9 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
           ..write('note: $note, ')
           ..write('customerId: $customerId, ')
           ..write('counterWalletId: $counterWalletId, ')
+          ..write('billerName: $billerName, ')
+          ..write('billerAccount: $billerAccount, ')
+          ..write('billerToken: $billerToken, ')
           ..write('status: $status, ')
           ..write('createdAt: $createdAt, ')
           ..write('version: $version, ')
@@ -1566,6 +1694,9 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     note,
     customerId,
     counterWalletId,
+    billerName,
+    billerAccount,
+    billerToken,
     status,
     createdAt,
     version,
@@ -1592,6 +1723,9 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
           other.note == this.note &&
           other.customerId == this.customerId &&
           other.counterWalletId == this.counterWalletId &&
+          other.billerName == this.billerName &&
+          other.billerAccount == this.billerAccount &&
+          other.billerToken == this.billerToken &&
           other.status == this.status &&
           other.createdAt == this.createdAt &&
           other.version == this.version &&
@@ -1616,6 +1750,9 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
   final Value<String?> note;
   final Value<String?> customerId;
   final Value<String?> counterWalletId;
+  final Value<String?> billerName;
+  final Value<String?> billerAccount;
+  final Value<String?> billerToken;
   final Value<core.TxStatus> status;
   final Value<DateTime> createdAt;
   final Value<int> version;
@@ -1639,6 +1776,9 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     this.note = const Value.absent(),
     this.customerId = const Value.absent(),
     this.counterWalletId = const Value.absent(),
+    this.billerName = const Value.absent(),
+    this.billerAccount = const Value.absent(),
+    this.billerToken = const Value.absent(),
     this.status = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.version = const Value.absent(),
@@ -1663,6 +1803,9 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     this.note = const Value.absent(),
     this.customerId = const Value.absent(),
     this.counterWalletId = const Value.absent(),
+    this.billerName = const Value.absent(),
+    this.billerAccount = const Value.absent(),
+    this.billerToken = const Value.absent(),
     this.status = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.version = const Value.absent(),
@@ -1692,6 +1835,9 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     Expression<String>? note,
     Expression<String>? customerId,
     Expression<String>? counterWalletId,
+    Expression<String>? billerName,
+    Expression<String>? billerAccount,
+    Expression<String>? billerToken,
     Expression<int>? status,
     Expression<DateTime>? createdAt,
     Expression<int>? version,
@@ -1716,6 +1862,9 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
       if (note != null) 'note': note,
       if (customerId != null) 'customer_id': customerId,
       if (counterWalletId != null) 'counter_wallet_id': counterWalletId,
+      if (billerName != null) 'biller_name': billerName,
+      if (billerAccount != null) 'biller_account': billerAccount,
+      if (billerToken != null) 'biller_token': billerToken,
       if (status != null) 'status': status,
       if (createdAt != null) 'created_at': createdAt,
       if (version != null) 'version': version,
@@ -1742,6 +1891,9 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     Value<String?>? note,
     Value<String?>? customerId,
     Value<String?>? counterWalletId,
+    Value<String?>? billerName,
+    Value<String?>? billerAccount,
+    Value<String?>? billerToken,
     Value<core.TxStatus>? status,
     Value<DateTime>? createdAt,
     Value<int>? version,
@@ -1766,6 +1918,9 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
       note: note ?? this.note,
       customerId: customerId ?? this.customerId,
       counterWalletId: counterWalletId ?? this.counterWalletId,
+      billerName: billerName ?? this.billerName,
+      billerAccount: billerAccount ?? this.billerAccount,
+      billerToken: billerToken ?? this.billerToken,
       status: status ?? this.status,
       createdAt: createdAt ?? this.createdAt,
       version: version ?? this.version,
@@ -1828,6 +1983,15 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     if (counterWalletId.present) {
       map['counter_wallet_id'] = Variable<String>(counterWalletId.value);
     }
+    if (billerName.present) {
+      map['biller_name'] = Variable<String>(billerName.value);
+    }
+    if (billerAccount.present) {
+      map['biller_account'] = Variable<String>(billerAccount.value);
+    }
+    if (billerToken.present) {
+      map['biller_token'] = Variable<String>(billerToken.value);
+    }
     if (status.present) {
       map['status'] = Variable<int>(
         $TransactionsTable.$converterstatus.toSql(status.value),
@@ -1872,6 +2036,9 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
           ..write('note: $note, ')
           ..write('customerId: $customerId, ')
           ..write('counterWalletId: $counterWalletId, ')
+          ..write('billerName: $billerName, ')
+          ..write('billerAccount: $billerAccount, ')
+          ..write('billerToken: $billerToken, ')
           ..write('status: $status, ')
           ..write('createdAt: $createdAt, ')
           ..write('version: $version, ')
@@ -5145,6 +5312,9 @@ typedef $$TransactionsTableCreateCompanionBuilder =
       Value<String?> note,
       Value<String?> customerId,
       Value<String?> counterWalletId,
+      Value<String?> billerName,
+      Value<String?> billerAccount,
+      Value<String?> billerToken,
       Value<core.TxStatus> status,
       Value<DateTime> createdAt,
       Value<int> version,
@@ -5170,6 +5340,9 @@ typedef $$TransactionsTableUpdateCompanionBuilder =
       Value<String?> note,
       Value<String?> customerId,
       Value<String?> counterWalletId,
+      Value<String?> billerName,
+      Value<String?> billerAccount,
+      Value<String?> billerToken,
       Value<core.TxStatus> status,
       Value<DateTime> createdAt,
       Value<int> version,
@@ -5279,6 +5452,21 @@ class $$TransactionsTableFilterComposer
 
   ColumnFilters<String> get counterWalletId => $composableBuilder(
     column: $table.counterWalletId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get billerName => $composableBuilder(
+    column: $table.billerName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get billerAccount => $composableBuilder(
+    column: $table.billerAccount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get billerToken => $composableBuilder(
+    column: $table.billerToken,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -5416,6 +5604,21 @@ class $$TransactionsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get billerName => $composableBuilder(
+    column: $table.billerName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get billerAccount => $composableBuilder(
+    column: $table.billerAccount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get billerToken => $composableBuilder(
+    column: $table.billerToken,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get status => $composableBuilder(
     column: $table.status,
     builder: (column) => ColumnOrderings(column),
@@ -5535,6 +5738,21 @@ class $$TransactionsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get billerName => $composableBuilder(
+    column: $table.billerName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get billerAccount => $composableBuilder(
+    column: $table.billerAccount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get billerToken => $composableBuilder(
+    column: $table.billerToken,
+    builder: (column) => column,
+  );
+
   GeneratedColumnWithTypeConverter<core.TxStatus, int> get status =>
       $composableBuilder(column: $table.status, builder: (column) => column);
 
@@ -5620,6 +5838,9 @@ class $$TransactionsTableTableManager
                 Value<String?> note = const Value.absent(),
                 Value<String?> customerId = const Value.absent(),
                 Value<String?> counterWalletId = const Value.absent(),
+                Value<String?> billerName = const Value.absent(),
+                Value<String?> billerAccount = const Value.absent(),
+                Value<String?> billerToken = const Value.absent(),
                 Value<core.TxStatus> status = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<int> version = const Value.absent(),
@@ -5643,6 +5864,9 @@ class $$TransactionsTableTableManager
                 note: note,
                 customerId: customerId,
                 counterWalletId: counterWalletId,
+                billerName: billerName,
+                billerAccount: billerAccount,
+                billerToken: billerToken,
                 status: status,
                 createdAt: createdAt,
                 version: version,
@@ -5668,6 +5892,9 @@ class $$TransactionsTableTableManager
                 Value<String?> note = const Value.absent(),
                 Value<String?> customerId = const Value.absent(),
                 Value<String?> counterWalletId = const Value.absent(),
+                Value<String?> billerName = const Value.absent(),
+                Value<String?> billerAccount = const Value.absent(),
+                Value<String?> billerToken = const Value.absent(),
                 Value<core.TxStatus> status = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<int> version = const Value.absent(),
@@ -5691,6 +5918,9 @@ class $$TransactionsTableTableManager
                 note: note,
                 customerId: customerId,
                 counterWalletId: counterWalletId,
+                billerName: billerName,
+                billerAccount: billerAccount,
+                billerToken: billerToken,
                 status: status,
                 createdAt: createdAt,
                 version: version,

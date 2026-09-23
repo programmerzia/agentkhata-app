@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
@@ -47,6 +48,28 @@ class TxTile extends ConsumerWidget {
   }
 }
 
+/// A row whose value the agent will read out or paste somewhere: the trx id
+/// a customer disputes, a meter number going into the biller's own site, the
+/// token that turns the lights back on.
+Widget _copyRow(BuildContext context, String k, String v, String copied) => Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(children: [
+        Expanded(child: Text(k, style: const TextStyle(color: Colors.grey))),
+        Flexible(child: Text(v, textAlign: TextAlign.end, style: const TextStyle(fontWeight: FontWeight.w600))),
+        const SizedBox(width: 4),
+        IconButton(
+          visualDensity: VisualDensity.compact,
+          iconSize: 18,
+          tooltip: copied,
+          onPressed: () {
+            Clipboard.setData(ClipboardData(text: v));
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(copied), duration: const Duration(seconds: 2)));
+          },
+          icon: const Icon(Icons.copy_rounded),
+        ),
+      ]),
+    );
+
 Widget _row(String k, String v) => Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
       child: Row(children: [Expanded(child: Text(k, style: const TextStyle(color: Colors.grey))), Text(v, style: const TextStyle(fontWeight: FontWeight.w600))]),
@@ -72,8 +95,11 @@ void showTxDetail(BuildContext context, WidgetRef ref, Transaction t) {
           _row(s('amount'), Fmt.moneyOf(code, t.amount.value)),
           if (t.commission.value != 0) _row(s('commission'), Fmt.moneyOf(code, t.commission.value)),
           if (t.fee.value != 0) _row(s('fees'), Fmt.moneyOf(code, t.fee.value)),
-          if (t.counterparty != null) _row(s('phone'), bnDigits(t.counterparty!, code)),
-          if (t.trxId != null) _row('TrxID', t.trxId!),
+          if (t.counterparty != null) _copyRow(sheet, s('phone'), t.counterparty!, s('copied')),
+          if (t.trxId != null) _copyRow(sheet, 'TrxID', t.trxId!, s('copied')),
+          if (t.billerName != null) _row(s('biller'), t.billerName!),
+          if (t.billerAccount != null) _copyRow(sheet, s('biller_account'), t.billerAccount!, s('copied')),
+          if (t.billerToken != null) _copyRow(sheet, s('biller_token'), t.billerToken!, s('copied')),
           if (t.balanceAfter != null) _row(s('balance_after'), Fmt.moneyOf(code, t.balanceAfter!.value)),
           _row(s('time'), bnDigits(DateFormat('d MMM yyyy, h:mm a', code == 'bn' ? 'bn' : 'en').format(t.occurredAt), code)),
           if (t.note != null) _row(s('note'), t.note!),

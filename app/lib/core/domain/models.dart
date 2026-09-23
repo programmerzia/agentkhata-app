@@ -37,6 +37,9 @@ class Transaction {
     this.note,
     this.customerId,
     this.counterWalletId,
+    this.billerName,
+    this.billerAccount,
+    this.billerToken,
     this.status = TxStatus.posted,
   });
   final String id;
@@ -56,6 +59,12 @@ class Transaction {
 
   /// For cashMove and b2b: the other wallet involved (usually cash).
   final String? counterWalletId;
+
+  /// A bill's biller ("NESCOPre"), the customer's account with them (a prepaid
+  /// meter number), and the token the biller sends back, when it arrives.
+  final String? billerName;
+  final String? billerAccount;
+  final String? billerToken;
   final TxStatus status;
 
   Transaction copyWith({
@@ -64,6 +73,7 @@ class Transaction {
     String? customerId,
     String? note,
     String? counterWalletId,
+    String? billerToken,
   }) =>
       Transaction(
         id: id,
@@ -81,6 +91,9 @@ class Transaction {
         note: note ?? this.note,
         customerId: customerId ?? this.customerId,
         counterWalletId: counterWalletId ?? this.counterWalletId,
+        billerName: billerName,
+        billerAccount: billerAccount,
+        billerToken: billerToken ?? this.billerToken,
         status: status ?? this.status,
       );
 }

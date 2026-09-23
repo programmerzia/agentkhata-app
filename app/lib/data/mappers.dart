@@ -30,6 +30,9 @@ extension TransactionRowX on TransactionRow {
         note: note,
         customerId: customerId,
         counterWalletId: counterWalletId,
+        billerName: billerName,
+        billerAccount: billerAccount,
+        billerToken: billerToken,
         status: status,
       );
 }

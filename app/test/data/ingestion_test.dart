@@ -109,4 +109,40 @@ void main() {
     expect((await repo2.watchAllPosted().first).length, 1);
     await db2.close();
   });
+
+  test('a NESCO bill keeps its meter number all the way into the books', () async {
+    final r = await svc.ingest(
+      body: 'Bill successfully paid.\nBiller: NESCOPre \nMMYYYY/Contact: 01718424859\nA/C: 78032986 \nAmount: Tk 500.00 \nFee: Tk 5.00 \nTrxID: DHK4MGM1W6 at 20/08/2026 11:20',
+      sender: '16247',
+      source: core.TxSource.autoSms,
+    );
+
+    expect(r.status, core.ParseStatus.parsed);
+    final saved = (await repo.watchAllPosted().first).firstWhere((t) => t.trxId == 'DHK4MGM1W6');
+    expect(saved.type, core.TxType.billPay);
+    expect(saved.billerName, 'NESCOPre');
+    // The number the customer reads out when the power is still off.
+    expect(saved.billerAccount, '78032986');
+    expect(saved.amount, core.Paisa.fromTaka(500));
+  });
+
+  test('a recharge sold through bKash reaches the books once, not twice', () async {
+    final first = await svc.ingest(
+      body: 'Received Recharge request of Tk 22.00 for 01581344833. Fee Tk 0.00. Balance Tk 9,028.17. TrxID DIM6RM4AB2 at 22/09/2026 20:37. Wait for confirmation.',
+      sender: '16247',
+      source: core.TxSource.autoSms,
+    );
+    final second = await svc.ingest(
+      body: 'Your bKash Mobile Recharge request of Tk 22.00 for 01581344833 was successful! Use bKash App for convenience & offers! TCA',
+      sender: '16247',
+      source: core.TxSource.autoSms,
+    );
+
+    expect(first.status, core.ParseStatus.parsed);
+    expect(second.status, core.ParseStatus.ignored);
+    final recharges = (await repo.watchAllPosted().first).where((t) => t.type == core.TxType.recharge).toList();
+    expect(recharges.length, 1);
+    expect(recharges.single.counterparty, '01581344833');
+  });
+
 }

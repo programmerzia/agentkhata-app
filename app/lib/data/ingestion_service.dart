@@ -81,6 +81,8 @@ class IngestionService {
       commission: commission,
       counterparty: parsed.counterparty,
       trxId: parsed.trxId,
+      billerName: parsed.billerName,
+      billerAccount: parsed.billerAccount,
       balanceAfter: parsed.balanceAfter,
       occurredAt: parsed.occurredAt ?? at,
       source: source,

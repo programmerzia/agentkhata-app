@@ -42,6 +42,15 @@ class Transactions extends Table {
   TextColumn get note => text().nullable()();
   TextColumn get customerId => text().nullable()();
   TextColumn get counterWalletId => text().nullable()();
+
+  /// Who a bill was paid to, and the customer's account with them — the meter
+  /// number on a prepaid electricity bill, a postpaid account, a WASA number.
+  TextColumn get billerName => text().nullable()();
+  TextColumn get billerAccount => text().nullable()();
+
+  /// The prepaid token, when the biller sends one. What a customer comes back
+  /// for when the power is still off.
+  TextColumn get billerToken => text().nullable()();
   IntColumn get status => intEnum<core.TxStatus>().withDefault(const Constant(0))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   /// Server-assigned. A push carries the version it last saw; a mismatch is a
@@ -139,7 +148,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _open());
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   /// Native: SQLite file in app documents. Web: sqlite3 compiled to wasm,
   /// persisted in OPFS/IndexedDB through a shared worker.
@@ -207,6 +216,14 @@ class AppDatabase extends _$AppDatabase {
             );
             await customStatement(
               "UPDATE commission_rules SET rate_ppm = CAST(ROUND(value * 10000) AS INTEGER) WHERE mode = 1",
+            );
+          }
+          if (from < 4) {
+            await m.addColumn(transactions, transactions.billerName);
+            await m.addColumn(transactions, transactions.billerAccount);
+            await m.addColumn(transactions, transactions.billerToken);
+            await customStatement(
+              'CREATE INDEX IF NOT EXISTS idx_tx_biller_account ON transactions(biller_account)',
             );
           }
         },
