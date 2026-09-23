@@ -151,4 +151,55 @@ void main() {
       expect(r.balanceAfter, Paisa(500000));
     });
   });
+
+  group('what a real phone actually receives', () {
+    // Sent in by the shop owner from a live handset, kept word for word:
+    // every space, line break and abbreviation is what the operator writes.
+    const p = MessageParser();
+
+    test('a NESCO prepaid bill keeps the biller and the meter number', () {
+      final r = p.parse(
+        'Bill successfully paid.\nBiller: NESCOPre \nMMYYYY/Contact: 01718424859\nA/C: 78032986 \nAmount: Tk 500.00 \nFee: Tk 5.00 \nTrxID: DHK4MGM1W6 at 20/08/2026 11:20',
+        sender: '16247',
+      );
+      expect(r.status, ParseStatus.parsed);
+      expect(r.type, TxType.billPay);
+      expect(r.amount, Paisa.fromTaka(500));
+      expect(r.fee, Paisa.fromTaka(5));
+      expect(r.billerName, 'NESCOPre');
+      // The one thing a customer comes back with when the power stays off.
+      expect(r.billerAccount, '78032986');
+      expect(r.trxId, 'DHK4MGM1W6');
+      expect(r.occurredAt, DateTime(2026, 8, 20, 11, 20));
+    });
+
+    test('a recharge is recorded from the request, which already states the balance', () {
+      final r = p.parse(
+        'Received Recharge request of Tk 22.00 for 01581344833. Fee Tk 0.00. Balance Tk 9,028.17. TrxID DIM6RM4AB2 at 22/09/2026 20:37. Wait for confirmation.',
+        sender: '16247',
+      );
+      expect(r.status, ParseStatus.parsed, reason: 'the float has already left the wallet');
+      expect(r.type, TxType.recharge);
+      expect(r.amount, Paisa.fromTaka(22));
+      expect(r.balanceAfter, Paisa.fromTaka(9028.17));
+      expect(r.counterparty, '01581344833');
+      expect(r.trxId, 'DIM6RM4AB2');
+    });
+
+    test('the confirmation that follows it is not a second recharge', () {
+      final r = p.parse(
+        'Your bKash Mobile Recharge request of Tk 22.00 for 01581344833 was successful! Use bKash App for convenience & offers! TCA',
+        sender: '16247',
+      );
+      expect(r.status, ParseStatus.ignored);
+    });
+
+    test('a genuinely failed transaction is still ignored', () {
+      final r = p.parse(
+        'Your Recharge request of Tk 22.00 for 01581344833 was unsuccessful. TrxID DIM6RM4AB3 at 22/09/2026 20:38.',
+        sender: '16247',
+      );
+      expect(r.status, ParseStatus.ignored);
+    });
+  });
 }

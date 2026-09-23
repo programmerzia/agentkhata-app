@@ -155,4 +155,18 @@ void main() {
     final row = await (db.select(db.wallets)..where((w) => w.id.equals(nagadId))).getSingle();
     expect(row.accountNumber, isNull);
   });
+
+  test('an account added after joining a shop is not read until it is on the capture list', () async {
+    // What a joined phone looks like: it records bKash only.
+    await repo.setCaptures([bkashId]);
+
+    final upayId = await repo.upsertWallet(kind: core.WalletKind.upay, label: 'Upay');
+    var match = await repo.walletForCapture(core.WalletKind.upay);
+    expect(match.captured, isFalse, reason: 'the old list cannot know about it');
+
+    await repo.setCaptures([bkashId, upayId]);
+    match = await repo.walletForCapture(core.WalletKind.upay);
+    expect(match.captured, isTrue);
+    expect(match.wallet!.id, upayId);
+  });
 }

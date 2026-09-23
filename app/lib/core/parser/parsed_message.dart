@@ -17,6 +17,8 @@ class ParsedMessage {
     this.occurredAt,
     this.confidence = 0,
     this.reason,
+    this.billerName,
+    this.billerAccount,
   });
 
   const ParsedMessage.ignored(String reason)
@@ -24,6 +26,14 @@ class ParsedMessage {
 
   const ParsedMessage.unparsed([String? reason])
       : this(status: ParseStatus.unparsed, reason: reason);
+
+  /// Who the bill was paid to, as the operator wrote it ("NESCOPre").
+  final String? billerName;
+
+  /// The customer's account with that biller — a prepaid meter number, a
+  /// postpaid account, a WASA bill number. What the agent is asked for when a
+  /// customer comes back saying the recharge never arrived.
+  final String? billerAccount;
 
   final ParseStatus status;
   final WalletKind? operator;

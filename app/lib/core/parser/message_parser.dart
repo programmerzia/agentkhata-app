@@ -22,9 +22,28 @@ class MessageParser {
     caseSensitive: false,
   );
   static final RegExp _failure = RegExp(
-    r'\b(failed|unsuccessful|declined|reversed|cancel+ed|insufficient|request(ed)?|pending|will be|do not share|never share)\b',
+    r'\b(failed|unsuccessful|declined|reversed|cancel+ed|insufficient|will be|do not share|never share)\b',
     caseSensitive: false,
   );
+
+  /*
+   * A recharge the operator has already taken the money for.
+   *
+   * bKash writes "Received Recharge request of Tk 22.00 ... Balance Tk
+   * 9,028.17. TrxID ... Wait for confirmation." The word "request" used to
+   * send this to the ignore pile as an unfinished transaction, so every
+   * recharge an agent sold was missing from the books — while the stated
+   * balance proves the float has already left. A request carrying a balance
+   * or a trx id IS the record; the "was successful" note that follows carries
+   * neither and is dropped as a repeat of it.
+   */
+  static final RegExp _awaitingOnly = RegExp(
+    r'\brequest(ed)?\b|\bpending\b',
+    caseSensitive: false,
+  );
+
+  static final RegExp _biller = RegExp(r'Biller\s*[:\-]\s*([^\n,]{2,40}?)\s*(?:\n|,|MMYYYY|Contact|A/C|Amount|$)', caseSensitive: false);
+  static final RegExp _billerAccount = RegExp(r'\bA/C\s*[:\-]?\s*([A-Za-z0-9-]{4,24})', caseSensitive: false);
   static final RegExp _promo = RegExp(
     r'(offer|cashback|bonus|congratulations|win|discount|campaign|apply now|download)',
     caseSensitive: false,
@@ -55,6 +74,11 @@ class MessageParser {
     if (operator == null) return const ParsedMessage.ignored('not an operator message');
 
     if (_failure.hasMatch(text)) return const ParsedMessage.ignored('not a completed transaction');
+
+    final settled = _trx.hasMatch(text) || _balance.hasMatch(text);
+    if (!settled && _awaitingOnly.hasMatch(text)) {
+      return const ParsedMessage.ignored('the confirmation note of a message already recorded');
+    }
 
     if (_promo.hasMatch(text) && !_trx.hasMatch(text)) return const ParsedMessage.ignored('promo');
 
@@ -107,6 +131,8 @@ class MessageParser {
       occurredAt: when,
       confidence: confidence,
       reason: reason,
+      billerName: _one(_biller, text),
+      billerAccount: _one(_billerAccount, text),
     );
   }
 
@@ -145,6 +171,12 @@ class MessageParser {
     // Rocket-style "Tk500.00" already covered; last resort: first number after the type word.
     final m = RegExp(r'(?:in|out|money|payment|b2b|recharge|bill)\s+(?:of\s+)?(?:tk\.?|৳)?\s*([\d,০-৯]+(?:\.\d{1,2})?)', caseSensitive: false).firstMatch(text);
     return m == null ? null : Paisa.tryParse(m.group(1)!);
+  }
+
+  String? _one(RegExp r, String text) {
+    final m = r.firstMatch(text);
+    final v = m?.group(1)?.trim();
+    return (v == null || v.isEmpty) ? null : v;
   }
 
   Paisa? _first(RegExp r, String text) {

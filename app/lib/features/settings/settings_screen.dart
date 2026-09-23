@@ -246,12 +246,23 @@ class SettingsScreen extends ConsumerWidget {
       ),
     );
     if (ok == true) {
-      await ref.read(repositoryProvider).upsertWallet(
-            kind: kind,
-            label: label.text.trim().isEmpty ? kind.label : label.text.trim(),
-            accountNumber: number.text.trim().isEmpty ? null : number.text.trim(),
-            openingBalance: Paisa.tryParse(opening.text) ?? Paisa.zero,
-          );
+      final repo = ref.read(repositoryProvider);
+      final id = await repo.upsertWallet(
+        kind: kind,
+        label: label.text.trim().isEmpty ? kind.label : label.text.trim(),
+        accountNumber: number.text.trim().isEmpty ? null : number.text.trim(),
+        openingBalance: Paisa.tryParse(opening.text) ?? Paisa.zero,
+      );
+      /*
+       * The phone that adds an account reads it from the start.
+       *
+       * Once a phone joins a shop it records only the accounts on its own
+       * capture list, and a list made when it joined cannot know about an
+       * account added later. Every message for that account was ignored as
+       * "another phone's", with nothing on screen to say why.
+       */
+      final captures = await repo.captures();
+      if (captures != null && kind.isMfs) await repo.setCaptures({...captures, id});
     }
   }
 
