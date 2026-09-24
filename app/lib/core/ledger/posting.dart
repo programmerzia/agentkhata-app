@@ -91,7 +91,13 @@ class Ledger {
     }
 
     if (t.commission.value != 0) {
-      final lands = t.commissionInCash ? cash : w;
+      // A charge taken in paper money goes to the drawer — unless the entry
+      // already names another wallet as its other side (a B2B lift or a
+      // transfer to a chosen account). The portal's ledger makes the same
+      // exception; the shared fixtures pin it.
+      final namesOther = t.counterWalletId != null &&
+          (t.type == TxType.b2bIn || t.type == TxType.b2bOut || t.type == TxType.cashMove);
+      final lands = t.commissionInCash && !namesOther ? cash : w;
       p.addAll([Posting(lands, t.commission), Posting(Account.commissionIncome, -t.commission)]);
     }
     if (t.fee.value != 0) {

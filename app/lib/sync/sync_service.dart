@@ -339,6 +339,10 @@ class SyncService {
             'note': t.note,
             'partyId': t.customerId,
             'counterWalletId': t.counterWalletId,
+            'commissionInCash': t.commissionInCash,
+            'billerName': t.billerName,
+            'billerAccount': t.billerAccount,
+            'billerToken': t.billerToken,
             'status': t.status.wireName,
             'deletedAt': isoN(t.deletedAt),
           }
@@ -367,6 +371,8 @@ class SyncService {
             'mode': r.mode.wireName,
             'ratePpm': r.ratePpm,
             'flatPoisha': r.flatPoisha?.toString(),
+            'takenInCash': r.takenInCash,
+            'billerMatch': r.billerMatch,
           }
       ],
     };
@@ -483,6 +489,10 @@ class SyncService {
     DateTime? dtN(dynamic v) => v == null ? null : dt(v);
     int money(dynamic v) => v == null ? 0 : int.parse(v.toString());
     int? moneyN(dynamic v) => v == null ? null : int.parse(v.toString());
+    // A server too old to know a field leaves the phone's own value alone,
+    // rather than blanking a bill's meter number on every pull.
+    Value<String?> textIf(String key) => r.containsKey(key) ? Value(r[key] as String?) : const Value.absent();
+    Value<bool> flagIf(String key) => r.containsKey(key) ? Value(r[key] == true) : const Value.absent();
 
     switch (table) {
       case 'wallets':
@@ -509,6 +519,10 @@ class SyncService {
             note: Value(r['note'] as String?),
             customerId: Value(r['partyId'] as String?),
             counterWalletId: Value(r['counterWalletId'] as String?),
+            commissionInCash: flagIf('commissionInCash'),
+            billerName: textIf('billerName'),
+            billerAccount: textIf('billerAccount'),
+            billerToken: textIf('billerToken'),
             status: Value(TxStatusIndex.ofName(r['status'])),
             version: Value((r['version'] as num?)?.toInt() ?? 1),
             updatedAt: Value(dt(r['updatedAt'])),
@@ -549,6 +563,8 @@ class SyncService {
             mode: Value(RateModeIndex.ofName(r['mode'])),
             ratePpm: Value((r['ratePpm'] as num?)?.toInt() ?? 0),
             flatPoisha: Value(moneyN(r['flatPoisha'])),
+            takenInCash: flagIf('takenInCash'),
+            billerMatch: textIf('billerMatch'),
             effectiveFrom: Value(dtN(r['effectiveFrom'])),
             version: Value((r['version'] as num?)?.toInt() ?? 1),
             updatedAt: Value(dt(r['updatedAt'])),

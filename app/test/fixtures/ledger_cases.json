@@ -190,6 +190,27 @@
       "expectedBalances": { "cash": "1285000", "bkash": "4901230", "nagad": "1803280", "bank": "0" },
       "expectedCommissionPoisha": "4510",
       "expectedNetProfitPoisha": "-10490"
+    },
+    {
+      "name": "a bill's service charge taken in cash lands in the drawer, not the wallet",
+      "why": "The ৳5 a shop adds on a bill is handed over as paper money. Booked on the bKash wallet it would put the wallet ৳5 above the operator's own balance on every bill, and the drawer ৳5 short.",
+      "entries": [
+        { "id": "b1", "walletId": "bkash", "type": "bill_pay", "amountPoisha": "120000", "commissionPoisha": "500", "feePoisha": "0", "commissionInCash": true },
+        { "id": "b2", "walletId": "nagad", "type": "bill_pay", "amountPoisha": "80000", "commissionPoisha": "320", "feePoisha": "0" }
+      ],
+      "expectedBalances": { "cash": "1200500", "bkash": "4880000", "nagad": "1920320", "bank": "0" },
+      "expectedCommissionPoisha": "820",
+      "expectedNetProfitPoisha": "820"
+    },
+    {
+      "name": "a cash charge on a transfer that names its other wallet stays on its own wallet",
+      "why": "An entry that already moves two named wallets has no drawer leg to carry the charge; both implementations keep it on the entry's own wallet rather than invent a third.",
+      "entries": [
+        { "id": "t1", "walletId": "bkash", "type": "cash_move", "amountPoisha": "50000", "commissionPoisha": "200", "feePoisha": "0", "counterWalletId": "bank", "commissionInCash": true }
+      ],
+      "expectedBalances": { "cash": "1000000", "bkash": "4950200", "nagad": "2000000", "bank": "50000" },
+      "expectedCommissionPoisha": "200",
+      "expectedNetProfitPoisha": "200"
     }
   ],
   "commissionCases": [

@@ -117,6 +117,7 @@ Transaction _entryFrom(Map<String, dynamic> e) => Transaction(
       fee: Paisa(int.parse(e['feePoisha'] as String)),
       counterWalletId: e['counterWalletId'] as String?,
       customerId: e['partyId'] as String?,
+      commissionInCash: e['commissionInCash'] == true,
       occurredAt: DateTime(2026, 6, 15, 10),
     );
 
